@@ -1,4 +1,3 @@
-
 import type { PlayerStats, EnemyStats } from '@/types/game';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,8 +21,10 @@ const PLAYER_BASE_DEFENSE = 2; // Example base defense if no armor
  * @returns An EnemyStats object.
  */
 export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', playerStats: PlayerStats): EnemyStats {
-  let enemy: Omit<EnemyStats, 'id' | 'spriteSeed'>;
-  const difficultyScale = 1 + (playerStats.daysPassed / 50); // Simple scaling with days passed
+  let enemy: Omit<EnemyStats, 'id' | 'spriteSeed' | 'health'>; // Health will be set to maxHealth
+  // Gentler scaling: no increase for first 3 days, then slower ramp up.
+  const difficultyScale = 1 + (Math.max(0, playerStats.daysPassed - 3) / 75);
+
 
   switch (opponentType) {
     case 'police':
@@ -32,8 +33,8 @@ export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', pl
         maxHealth: Math.round((30 + Math.random() * 10) * difficultyScale),
         attack: Math.round((8 + Math.random() * 4) * difficultyScale),
         defense: Math.round((10 + Math.random() * 5) * difficultyScale),
-        defeatCashReward: 0, // Police don't typically drop cash
-        defeatRepReward: -5 - Math.floor(Math.random() * 5), // Losing to police is bad for rep
+        defeatCashReward: 0, 
+        defeatRepReward: -5 - Math.floor(Math.random() * 5), 
       };
       break;
     case 'gang':
@@ -50,9 +51,10 @@ export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', pl
     default:
       enemy = {
         name: 'Desperate Fiend',
-        maxHealth: Math.round((20 + Math.random() * 10) * difficultyScale),
-        attack: Math.round((5 + Math.random() * 3) * difficultyScale),
-        defense: Math.round((3 + Math.random() * 3) * difficultyScale),
+        // Slightly reduced base health for fiends for very early game
+        maxHealth: Math.round((18 + Math.random() * 8) * difficultyScale), 
+        attack: Math.round((4 + Math.random() * 3) * difficultyScale), // Slightly reduced base attack
+        defense: Math.round((2 + Math.random() * 3) * difficultyScale), // Slightly reduced base defense
         defeatCashReward: 10 + Math.floor(Math.random() * 20),
         defeatRepReward: 1 + Math.floor(Math.random() * 3),
       };
@@ -62,8 +64,8 @@ export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', pl
   return {
     ...enemy,
     id: uuidv4(),
-    health: enemy.maxHealth,
-    spriteSeed: opponentType + enemy.name.replace(/\s/g, ''), // Simple seed for placeholder
+    health: enemy.maxHealth, // Start with full health
+    spriteSeed: opponentType + enemy.name.replace(/\s/g, ''), 
   };
 }
 
@@ -84,9 +86,9 @@ export function getBattleResultConsequences(playerWon: boolean, enemyDefeated: E
     };
   } else {
     // Player lost
-    const cashLossPercentage = 0.1 + Math.random() * 0.15; // Lose 10-25% of cash
+    const cashLossPercentage = 0.1 + Math.random() * 0.15; 
     const cashLost = Math.min(playerStats.cash, Math.floor(playerStats.cash * cashLossPercentage));
-    const repLoss = - (5 + Math.floor(Math.random() * 10)); // Lose 5-14 rep
+    const repLoss = - (5 + Math.floor(Math.random() * 10)); 
 
     return {
       playerWon: false,

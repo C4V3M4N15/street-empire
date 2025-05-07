@@ -1,4 +1,3 @@
-
 import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 
 export const AVAILABLE_WEAPONS: Weapon[] = [
@@ -20,6 +19,7 @@ export const AVAILABLE_ARMOR: Armor[] = [
 ];
 
 export const AVAILABLE_HEALING_ITEMS: HealingItem[] = [
+  { id: 'bandages', name: 'Bandages', price: 50, healAmount: 20, description: 'Basic bandages. Heals 20 HP.' },
   { id: 'urgent_care_patch_up', name: 'Urgent Care Patch-up', price: 150, healAmount: 25, isPercentageHeal: true, description: 'Heals 25% of max HP.' },
   { id: 'back_alley_doc', name: 'Back Alley Doc', price: 600, healAmount: 60, isPercentageHeal: true, description: 'Heals 60% of max HP.' },
   { id: 'trauma_kit', name: 'Trauma Kit', price: 1200, isFullHeal: true, description: 'Restores to full health.' },
