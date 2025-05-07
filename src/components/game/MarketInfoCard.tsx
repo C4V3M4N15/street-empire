@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent, ArrowUpCircle, ArrowDownCircle, MinusCircle, CreditCard } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent, Arrow Icons, CreditCard
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent, ArrowUpCircle, ArrowDownCircle, MinusCircle, CreditCard, Target } from 'lucide-react'; // Added Target
 import type { PlayerStats, GameState } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -29,6 +28,7 @@ interface MarketInfoCardProps {
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
   buyWeapon: (weapon: Weapon) => void;
+  buyAmmoForEquippedWeapon: () => void; // New prop for buying ammo
   buyArmor: (armor: Armor) => void;
   buyHealingItem: (item: HealingItem) => void;
   buyCapacityUpgrade: (upgrade: CapacityUpgrade) => void;
@@ -65,6 +65,7 @@ export function MarketInfoCard({
   buyDrug,
   sellDrug,
   buyWeapon,
+  buyAmmoForEquippedWeapon,
   buyArmor,
   buyHealingItem,
   buyCapacityUpgrade,
@@ -79,15 +80,16 @@ export function MarketInfoCard({
     if (value === "" || (numValue >= 0 && !isNaN(numValue))) {
       setTransactionQuantities(prev => ({ ...prev, [drugName]: value }));
     } else if (isNaN(numValue) && value !== "") {
+      // Allow non-numeric input for immediate feedback if desired, but getNumericQuantity handles parsing
       setTransactionQuantities(prev => ({ ...prev, [drugName]: value }));
     }
   };
 
   const getNumericQuantity = (drugName: string): number => {
     const valStr = transactionQuantities[drugName] || "";
-    if (valStr === "") return 0;
+    if (valStr === "") return 0; // Treat empty string as 0 for calculation
     const val = parseInt(valStr, 10);
-    return isNaN(val) || val < 0 ? 0 : val;
+    return isNaN(val) || val < 0 ? 0 : val; // Ensure non-negative, valid number
   };
 
   const getPriceChangeIcon = (direction?: DrugPrice['priceChangeDirection']) => {
@@ -290,7 +292,7 @@ export function MarketInfoCard({
             <p className="text-xs text-muted-foreground mb-3">All your less-than-legal needs, in one shady spot.</p>
 
             <Tabs defaultValue="weapons" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 mb-3"> {/* Updated grid-cols-4 to grid-cols-5 */}
+                <TabsList className="grid w-full grid-cols-5 mb-3">
                     <TabsTrigger value="weapons" className="flex items-center text-xs sm:text-sm">
                         <Sword className="mr-1 sm:mr-2 h-4 w-4" /> Weapons
                     </TabsTrigger>
@@ -303,7 +305,7 @@ export function MarketInfoCard({
                     <TabsTrigger value="capacity" className="flex items-center text-xs sm:text-sm">
                         <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Capacity
                     </TabsTrigger>
-                    <TabsTrigger value="iap" className="flex items-center text-xs sm:text-sm"> {/* New TabTrigger */}
+                    <TabsTrigger value="iap" className="flex items-center text-xs sm:text-sm">
                         <CreditCard className="mr-1 sm:mr-2 h-4 w-4" /> IAP
                     </TabsTrigger>
                 </TabsList>
@@ -311,23 +313,51 @@ export function MarketInfoCard({
                 <TabsContent value="weapons" className="mt-0">
                     <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                       {availableWeapons.length > 0 ? (
-                        availableWeapons.map(weapon => (
-                          <div key={weapon.name} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
-                            <div>
-                              <p className="text-sm font-medium">{weapon.name}</p>
-                              <p className="text-xs text-muted-foreground">DMG: +{weapon.damageBonus} | Cost: ${weapon.price.toLocaleString()}</p>
+                        availableWeapons.map(weapon => {
+                          const isEquipped = playerStats.equippedWeapon?.name === weapon.name;
+                          const ammoStatus = weapon.isFirearm && playerStats.equippedWeaponAmmo && isEquipped
+                            ? `(${playerStats.equippedWeaponAmmo.currentInClip}/${playerStats.equippedWeaponAmmo.reserveAmmo})`
+                            : "";
+                          const ammoCost = weapon.isFirearm ? Math.round(weapon.price * 0.10) : 0;
+                          const canAffordAmmo = playerStats.cash >= ammoCost;
+                          const isMaxAmmo = weapon.isFirearm && weapon.clipSize && playerStats.equippedWeaponAmmo && isEquipped &&
+                                            playerStats.equippedWeaponAmmo.currentInClip === weapon.clipSize &&
+                                            playerStats.equippedWeaponAmmo.reserveAmmo === weapon.clipSize * 2;
+
+
+                          return (
+                            <div key={weapon.name} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                              <div>
+                                <p className="text-sm font-medium">{weapon.name} {isEquipped && ammoStatus}</p>
+                                <p className="text-xs text-muted-foreground">DMG: +{weapon.damageBonus} | Cost: ${weapon.price.toLocaleString()}</p>
+                                {weapon.isFirearm && <p className="text-xs text-muted-foreground">Clip Size: {weapon.clipSize} | Ammo Cost: ${ammoCost.toLocaleString()}</p>}
+                              </div>
+                              <div className="flex flex-col sm:flex-row items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => buyWeapon(weapon)}
+                                  disabled={isLoading || playerStats.cash < weapon.price || isEquipped}
+                                  className="text-xs px-3 w-full sm:w-auto"
+                                >
+                                  {isEquipped ? 'Equipped' : 'Buy'}
+                                </Button>
+                                {weapon.isFirearm && isEquipped && (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={buyAmmoForEquippedWeapon}
+                                    disabled={isLoading || !canAffordAmmo || isMaxAmmo}
+                                    className="text-xs px-2 w-full sm:w-auto"
+                                  >
+                                    <Target className="h-3 w-3 mr-1" />
+                                    {isMaxAmmo ? 'Max Ammo' : `Buy Clip ($${ammoCost.toLocaleString()})`}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => buyWeapon(weapon)}
-                              disabled={isLoading || playerStats.cash < weapon.price || (playerStats.equippedWeapon?.name === weapon.name)}
-                              className="text-xs px-3"
-                            >
-                              {playerStats.equippedWeapon?.name === weapon.name ? 'Equipped' : 'Buy'}
-                            </Button>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                          <p className="text-xs text-muted-foreground py-3 text-center">No weapons currently in stock.</p>
                       )}
@@ -412,7 +442,7 @@ export function MarketInfoCard({
                     )}
                   </div>
                 </TabsContent>
-                <TabsContent value="iap" className="mt-0"> {/* New TabsContent */}
+                <TabsContent value="iap" className="mt-0">
                   <div className="space-y-2 max-h-96 overflow-y-auto pr-1 p-2.5">
                     <p className="text-sm font-medium text-center py-4 text-muted-foreground">
                       In-App Purchases - Coming Soon!

@@ -18,7 +18,9 @@ export interface InventoryItem {
 export interface Weapon {
   name: string;
   price: number;
-  damageBonus: number; // Damage added to base player damage (1 for fists)
+  damageBonus: number; // Damage added to base player damage
+  isFirearm?: boolean; // True if the weapon uses ammo
+  clipSize?: number;   // Number of bullets in a full clip
 }
 
 export interface Armor {
@@ -56,10 +58,14 @@ export interface PlayerStats {
   currentLocation: string;
   rank: PlayerRank;
   maxInventoryCapacity: number; // Maximum number of drug units player can carry
-  equippedWeapon: Weapon | null; // Player's current weapon, null for fists
-  equippedArmor: Armor | null; // Player's current best owned armor
-  purchasedUpgradeIds: string[]; // IDs of one-time capacity upgrades purchased
-  purchasedArmorIds: string[]; // IDs of one-time armor upgrades purchased
+  equippedWeapon: Weapon | null;
+  equippedWeaponAmmo: { // Ammo details for the equipped weapon if it's a firearm
+    currentInClip: number;
+    reserveAmmo: number; // Total bullets in reserve, not number of clips
+  } | null;
+  equippedArmor: Armor | null;
+  purchasedUpgradeIds: string[];
+  purchasedArmorIds: string[];
 }
 
 export interface EnemyStats {
@@ -69,7 +75,7 @@ export interface EnemyStats {
   maxHealth: number;
   attack: number;
   defense: number;
-  spriteSeed?: string; // For generating a consistent placeholder image
+  spriteSeed?: string;
   defeatCashReward?: number;
   defeatRepReward?: number;
 }
@@ -80,21 +86,22 @@ export type LogEventType =
   | 'travel'
   | 'combat_win'
   | 'combat_loss'
-  | 'health_update' // More generic for health changes
+  | 'health_update'
   | 'rank_up'
   | 'game_over'
   | 'shop_weapon_purchase'
   | 'shop_armor_purchase'
   | 'shop_healing_purchase'
-  | 'shop_capacity_upgrade' 
-  | 'event_trigger' 
-  | 'event_player_impact' 
-  | 'battle_action' 
-  | 'info'; 
+  | 'shop_capacity_upgrade'
+  | 'shop_ammo_purchase' // New log type for ammo
+  | 'event_trigger'
+  | 'event_player_impact'
+  | 'battle_action'
+  | 'info';
 
 export interface LogEntry {
-  id: string; 
-  timestamp: string; 
+  id: string;
+  timestamp: string;
   type: LogEventType;
   message: string;
 }
@@ -102,7 +109,7 @@ export interface LogEntry {
 export interface GameState {
   playerStats: PlayerStats;
   marketPrices: DrugPrice[];
-  previousMarketPrices: DrugPrice[]; // Store prices from the day before for comparison
+  previousMarketPrices: DrugPrice[];
   localHeadlines: LocalHeadline[];
   eventLog: LogEntry[];
   isLoadingNextDay: boolean;
@@ -112,17 +119,16 @@ export interface GameState {
   availableWeapons: Weapon[];
   availableArmor: Armor[];
   availableHealingItems: HealingItem[];
-  availableCapacityUpgrades: CapacityUpgrade[]; 
-  activeBoroughEvents: Record<string, GameEvent | null>; 
-  boroughHeatLevels: Record<string, number>; 
-  playerActivityInBoroughsThisDay: Record<string, number>; 
-  
+  availableCapacityUpgrades: CapacityUpgrade[];
+  activeBoroughEvents: Record<string, GameEvent | null>;
+  boroughHeatLevels: Record<string, number>;
+  playerActivityInBoroughsThisDay: Record<string, number>;
+
   // Battle State
   isBattleActive: boolean;
   currentEnemy: EnemyStats | null;
-  battleLog: LogEntry[]; 
-  battleMessage: string | null; 
+  battleLog: LogEntry[];
+  battleMessage: string | null;
 }
 
-// Defines the actions a player can take during a battle
 export type PlayerBattleActionType = 'attack' | 'flee';

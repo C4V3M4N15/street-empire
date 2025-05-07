@@ -2,7 +2,7 @@
 
 import type { PlayerStats } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck, PackagePlus } from 'lucide-react';
+import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck, PackagePlus, Target } from 'lucide-react'; // Added Target for ammo
 import {
   Accordion,
   AccordionContent,
@@ -15,8 +15,8 @@ interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
 
-const PLAYER_BASE_DAMAGE = 5; // Effective base damage (e.g. fists)
-const PLAYER_BASE_PROTECTION = 2; // Effective base protection (e.g. unarmored)
+const PLAYER_BASE_DAMAGE = 5;
+const PLAYER_BASE_PROTECTION = 2;
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string; className?: string }> = ({ icon: Icon, label, value, iconColor, className }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-border/50 last:border-b-0", className)}>
@@ -40,6 +40,10 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
   const currentArmorName = playerStats.equippedArmor ? playerStats.equippedArmor.name : 'None';
   const armorProtectionBonus = playerStats.equippedArmor?.protectionBonus || 0;
   const totalProtection = PLAYER_BASE_PROTECTION + armorProtectionBonus;
+
+  const ammoDisplay = playerStats.equippedWeapon?.isFirearm && playerStats.equippedWeaponAmmo && playerStats.equippedWeapon.clipSize
+    ? `${playerStats.equippedWeaponAmmo.currentInClip}/${playerStats.equippedWeaponAmmo.reserveAmmo} (Clip: ${playerStats.equippedWeapon.clipSize})`
+    : 'N/A';
 
 
   return (
@@ -68,6 +72,9 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
             </AccordionTrigger>
             <AccordionContent className="pt-0 pb-0 pl-1 pr-1">
               <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (+${weaponDamageBonus} DMG)`} iconColor="text-orange-500" className="border-t-0" />
+              {playerStats.equippedWeapon?.isFirearm && (
+                <StatItem icon={Target} label="Ammo" value={ammoDisplay} iconColor="text-yellow-600" />
+              )}
               <StatItem icon={Zap} label="Total Damage" value={totalDamage} iconColor="text-yellow-400" />
               <StatItem icon={ShieldHalf} label="Armor" value={`${currentArmorName} (+${armorProtectionBonus} DEF)`} iconColor="text-blue-500" />
               <StatItem icon={Zap} label="Total Protection" value={totalProtection} iconColor="text-sky-400" />
@@ -109,7 +116,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               )}
             </AccordionContent>
           </AccordionItem>
-          
+
           {playerStats.purchasedUpgradeIds.length > 0 && (
             <AccordionItem value="upgrades">
               <AccordionTrigger className="py-2.5 text-sm font-medium hover:no-underline text-muted-foreground hover:text-accent [&[data-state=open]>svg]:text-accent">
@@ -119,7 +126,6 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-0 pl-3 pr-1">
-                {/* This is a simple display. You might want to fetch upgrade names from a lookup if needed */}
                 {playerStats.purchasedUpgradeIds.map(upgradeId => (
                    <p key={upgradeId} className="text-xs py-1 border-b border-border/30 last:border-b-0">
                      {upgradeId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}

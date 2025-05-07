@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
@@ -6,7 +5,7 @@ import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
 import { GameOverDialog } from '@/components/game/GameOverDialog';
 import { UnifiedLogPanel } from '@/components/game/UnifiedLogPanel';
-import { BattleScreen } from '@/components/game/BattleScreen'; // New Import
+import { BattleScreen } from '@/components/game/BattleScreen';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -16,10 +15,10 @@ export default function StreetEmpirePage() {
     playerStats,
     marketPrices,
     localHeadlines,
-    activeBoroughEvents, 
+    activeBoroughEvents,
     availableWeapons,
     availableArmor,
-    availableHealingItems, 
+    availableHealingItems,
     availableCapacityUpgrades,
     eventLog,
     isLoadingNextDay,
@@ -28,8 +27,9 @@ export default function StreetEmpirePage() {
     buyDrug,
     sellDrug,
     buyWeapon,
+    buyAmmoForEquippedWeapon, // Added
     buyArmor,
-    buyHealingItem, 
+    buyHealingItem,
     buyCapacityUpgrade,
     handleNextDay,
     resetGame,
@@ -63,7 +63,7 @@ export default function StreetEmpirePage() {
         battleMessage={battleMessage}
         onPlayerAction={handlePlayerBattleAction}
         onEndBattle={endBattleScreen}
-        isLoading={isLoadingNextDay} // Pass loading state for disabling actions during processing
+        isLoading={isLoadingNextDay}
       />
     );
   }
@@ -89,16 +89,17 @@ export default function StreetEmpirePage() {
             localHeadlines={localHeadlines}
             isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0 && availableHealingItems.length === 0 && availableCapacityUpgrades.length === 0)}
             playerStats={playerStats}
-            activeBoroughEvents={activeBoroughEvents} 
+            activeBoroughEvents={activeBoroughEvents}
             availableWeapons={availableWeapons}
             availableArmor={availableArmor}
-            availableHealingItems={availableHealingItems} 
+            availableHealingItems={availableHealingItems}
             availableCapacityUpgrades={availableCapacityUpgrades}
             buyDrug={buyDrug}
             sellDrug={sellDrug}
             buyWeapon={buyWeapon}
+            buyAmmoForEquippedWeapon={buyAmmoForEquippedWeapon} // Passed
             buyArmor={buyArmor}
-            buyHealingItem={buyHealingItem} 
+            buyHealingItem={buyHealingItem}
             buyCapacityUpgrade={buyCapacityUpgrade}
             travelToLocation={travelToLocation}
             fetchHeadlinesForLocation={fetchHeadlinesForLocation}
@@ -117,7 +118,7 @@ export default function StreetEmpirePage() {
       </div>
 
       <GameOverDialog
-        isOpen={isGameOver && !isBattleActive} // Only show if game is over AND not in a battle that caused it
+        isOpen={isGameOver && !isBattleActive}
         onClose={resetGame}
         daysPassed={playerStats.daysPassed}
         finalCash={playerStats.cash}

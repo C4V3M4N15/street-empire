@@ -1,12 +1,12 @@
 import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 
 export const AVAILABLE_WEAPONS: Weapon[] = [
-  { name: 'Switchblade', price: 100, damageBonus: 3 },
-  { name: 'Baseball Bat', price: 250, damageBonus: 6 },
-  { name: '9MM', price: 750, damageBonus: 10 },
-  { name: 'Switch (SMG)', price: 3000, damageBonus: 20 },
-  { name: 'Combat Shotty', price: 6000, damageBonus: 35 },
-  { name: 'RPG', price: 12000, damageBonus: 50 },
+  { name: 'Switchblade', price: 100, damageBonus: 3, isFirearm: false },
+  { name: 'Baseball Bat', price: 250, damageBonus: 6, isFirearm: false },
+  { name: '9MM', price: 750, damageBonus: 10, isFirearm: true, clipSize: 12 },
+  { name: 'Switch (SMG)', price: 3000, damageBonus: 20, isFirearm: true, clipSize: 30 },
+  { name: 'Combat Shotty', price: 6000, damageBonus: 35, isFirearm: true, clipSize: 8 },
+  { name: 'RPG', price: 12000, damageBonus: 50, isFirearm: true, clipSize: 1 },
 ];
 
 export const AVAILABLE_ARMOR: Armor[] = [
