@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { PlayerStats } from '@/types/game';
@@ -11,14 +10,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext'; // Added
+import { useAuth } from '@/contexts/AuthContext'; 
 
 interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
 
-const PLAYER_BASE_ATTACK = 5; // Base damage with fists
-const PLAYER_BASE_PROTECTION = 2; // Base protection with no armor
+const PLAYER_BASE_ATTACK = 5; 
+const PLAYER_BASE_PROTECTION = 2; 
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string; className?: string }> = ({ icon: Icon, label, value, iconColor, className }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-border/50 last:border-b-0", className)}>
@@ -31,17 +30,17 @@ const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string
 );
 
 export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
-  const { user } = useAuth(); // Added
-  const playerName = user?.displayName || playerStats.name; // Use auth name or fallback
+  const { user } = useAuth(); 
+  const playerName = user?.displayName || playerStats.name; 
 
   const inventoryEntries = Object.entries(playerStats.inventory);
   const hasInventory = inventoryEntries.length > 0;
   const totalInventoryUnits = inventoryEntries.reduce((sum, [, item]) => sum + item.quantity, 0);
 
   const currentWeaponName = playerStats.equippedWeapon ? playerStats.equippedWeapon.name : 'Fists';
-  // Player's attack power is now directly the weapon's damageBonus, or PLAYER_BASE_ATTACK if unarmed.
   const weaponDamageBonus = playerStats.equippedWeapon?.damageBonus || 0;
-  const totalDamage = playerStats.equippedWeapon ? weaponDamageBonus : PLAYER_BASE_ATTACK;
+  // Corrected totalDamage calculation for display: Base attack + weapon bonus
+  const totalDamageToDisplay = PLAYER_BASE_ATTACK + weaponDamageBonus;
 
 
   const currentArmorName = playerStats.equippedArmor ? playerStats.equippedArmor.name : 'None';
@@ -57,7 +56,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     <Card className="shadow-lg">
       <CardHeader className="pb-3 pt-4">
         <CardTitle className="flex items-center text-2xl">
-          <User className="mr-2 h-7 w-7 text-primary-foreground" /> {playerName}'s Status {/* Updated */}
+          <User className="mr-2 h-7 w-7 text-primary-foreground" /> {playerName}'s Status 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0.5 p-4 pt-0">
@@ -78,11 +77,11 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-0 pb-0 pl-1 pr-1">
-              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (DMG: ${playerStats.equippedWeapon ? weaponDamageBonus : PLAYER_BASE_ATTACK})`} iconColor="text-orange-500" className="border-t-0" />
+              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (DMG: ${playerStats.equippedWeapon ? `+${weaponDamageBonus}` : PLAYER_BASE_ATTACK})`} iconColor="text-orange-500" className="border-t-0" />
               {playerStats.equippedWeapon?.isFirearm && (
                 <StatItem icon={Target} label="Ammo" value={ammoDisplay} iconColor="text-yellow-600" />
               )}
-              <StatItem icon={Zap} label="Total Damage" value={totalDamage} iconColor="text-yellow-400" />
+              <StatItem icon={Zap} label="Total Damage" value={totalDamageToDisplay} iconColor="text-yellow-400" />
               <StatItem icon={ShieldHalf} label="Armor" value={`${currentArmorName} (DEF: +${armorProtectionBonus})`} iconColor="text-blue-500" />
               <StatItem icon={Zap} label="Total Protection" value={totalProtection} iconColor="text-sky-400" />
               <StatItem icon={Star} label="Reputation" value={playerStats.reputation} iconColor="text-yellow-500" />
@@ -147,4 +146,3 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     </Card>
   );
 }
-
