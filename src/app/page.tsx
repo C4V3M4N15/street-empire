@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
@@ -18,6 +19,7 @@ export default function StreetEmpirePage() {
     availableWeapons,
     availableArmor,
     availableHealingItems, 
+    availableCapacityUpgrades,
     eventLog,
     isLoadingNextDay,
     isLoadingMarket,
@@ -27,6 +29,7 @@ export default function StreetEmpirePage() {
     buyWeapon,
     buyArmor,
     buyHealingItem, 
+    buyCapacityUpgrade,
     handleNextDay,
     resetGame,
     travelToLocation,
@@ -62,17 +65,19 @@ export default function StreetEmpirePage() {
           <MarketInfoCard
             marketPrices={marketPrices}
             localHeadlines={localHeadlines}
-            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0 && availableHealingItems.length === 0)}
+            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0 && availableHealingItems.length === 0 && availableCapacityUpgrades.length === 0)}
             playerStats={playerStats}
             activeBoroughEvents={activeBoroughEvents} 
             availableWeapons={availableWeapons}
             availableArmor={availableArmor}
             availableHealingItems={availableHealingItems} 
+            availableCapacityUpgrades={availableCapacityUpgrades}
             buyDrug={buyDrug}
             sellDrug={sellDrug}
             buyWeapon={buyWeapon}
             buyArmor={buyArmor}
             buyHealingItem={buyHealingItem} 
+            buyCapacityUpgrade={buyCapacityUpgrade}
             travelToLocation={travelToLocation}
             fetchHeadlinesForLocation={fetchHeadlinesForLocation}
           />

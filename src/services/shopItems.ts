@@ -1,5 +1,5 @@
 
-import type { Weapon, Armor, HealingItem } from '@/types/game';
+import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 
 export const AVAILABLE_WEAPONS: Weapon[] = [
   { name: 'Switchblade', price: 100, damageBonus: 3 },
@@ -23,6 +23,12 @@ export const AVAILABLE_HEALING_ITEMS: HealingItem[] = [
   { id: 'urgent_care_patch_up', name: 'Urgent Care Patch-up', price: 150, healAmount: 25, isPercentageHeal: true, description: 'Heals 25% of max HP.' },
   { id: 'back_alley_doc', name: 'Back Alley Doc', price: 600, healAmount: 60, isPercentageHeal: true, description: 'Heals 60% of max HP.' },
   { id: 'trauma_kit', name: 'Trauma Kit', price: 1200, isFullHeal: true, description: 'Restores to full health.' },
+];
+
+export const AVAILABLE_CAPACITY_UPGRADES: CapacityUpgrade[] = [
+  { id: 'backpack', name: 'Backpack', price: 250, capacityIncrease: 20, description: 'A sturdy backpack to carry more product.' },
+  { id: 'stash_box', name: 'Stash Box', price: 500, capacityIncrease: 50, description: 'A hidden stash box for extra storage.' },
+  { id: 'trap_house_closet', name: 'Trap House Closet', price: 1000, capacityIncrease: 100, description: 'Secure a closet in a trap house for serious volume.' },
 ];
 
 /**
@@ -58,3 +64,13 @@ export async function getShopHealingItems(): Promise<HealingItem[]> {
   return AVAILABLE_HEALING_ITEMS;
 }
 
+/**
+ * Retrieves the list of available capacity upgrades in the shop.
+ * Currently returns a static list.
+ * @returns An array of CapacityUpgrade objects.
+ */
+export async function getShopCapacityUpgrades(): Promise<CapacityUpgrade[]> {
+  // Simulate API call delay if this were dynamic
+  await new Promise(resolve => setTimeout(resolve, 100));
+  return AVAILABLE_CAPACITY_UPGRADES;
+}

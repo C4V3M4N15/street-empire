@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
-import type { Weapon, Armor, HealingItem } from '@/types/game'; // Import HealingItem type
+import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game'; // Import HealingItem type
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,11 +24,13 @@ interface MarketInfoCardProps {
   availableWeapons: Weapon[];
   availableArmor: Armor[];
   availableHealingItems: HealingItem[]; 
+  availableCapacityUpgrades: CapacityUpgrade[];
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
   buyWeapon: (weapon: Weapon) => void;
   buyArmor: (armor: Armor) => void;
   buyHealingItem: (item: HealingItem) => void; 
+  buyCapacityUpgrade: (upgrade: CapacityUpgrade) => void;
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
@@ -60,11 +63,13 @@ export function MarketInfoCard({
   availableWeapons,
   availableArmor,
   availableHealingItems,
+  availableCapacityUpgrades,
   buyDrug,
   sellDrug,
   buyWeapon,
   buyArmor,
   buyHealingItem,
+  buyCapacityUpgrade,
   travelToLocation,
   fetchHeadlinesForLocation
 }: MarketInfoCardProps) {
@@ -280,7 +285,7 @@ export function MarketInfoCard({
                         <BriefcaseMedical className="mr-1 sm:mr-2 h-4 w-4" /> Healing
                     </TabsTrigger>
                     <TabsTrigger value="capacity" className="flex items-center text-xs sm:text-sm">
-                        <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Upgrades
+                        <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Capacity
                     </TabsTrigger>
                 </TabsList>
 
@@ -363,7 +368,30 @@ export function MarketInfoCard({
                 </TabsContent>
 
                 <TabsContent value="capacity" className="mt-0">
-                    <p className="text-xs text-muted-foreground py-3 text-center">Storage capacity upgrades coming soon!</p>
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {availableCapacityUpgrades.length > 0 ? (
+                      availableCapacityUpgrades.map(upgrade => (
+                        <div key={upgrade.id} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                          <div>
+                            <p className="text-sm font-medium">{upgrade.name}</p>
+                            <p className="text-xs text-muted-foreground">Capacity: +{upgrade.capacityIncrease} | Cost: ${upgrade.price.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground/80 italic">{upgrade.description}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => buyCapacityUpgrade(upgrade)}
+                            disabled={isLoading || playerStats.cash < upgrade.price || playerStats.purchasedUpgradeIds.includes(upgrade.id)}
+                            className="text-xs px-3"
+                          >
+                            {playerStats.purchasedUpgradeIds.includes(upgrade.id) ? 'Owned' : 'Buy'}
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground py-3 text-center">No capacity upgrades currently available.</p>
+                    )}
+                  </div>
                 </TabsContent>
             </Tabs>
           </CardContent>

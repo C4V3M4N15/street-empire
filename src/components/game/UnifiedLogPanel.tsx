@@ -5,7 +5,7 @@ import type { LogEntry, LogEventType } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { History, Megaphone, Activity, Plane, ShoppingCart, Coins, ShieldAlert, ShieldCheck, HeartPulse, Award, Info, AlertCircle, Sword, ShieldHalf, BriefcaseMedical, Zap } from 'lucide-react';
+import { History, Megaphone, Activity, Plane, ShoppingCart, Coins, ShieldAlert, ShieldCheck, HeartPulse, Award, Info, AlertCircle, Sword, ShieldHalf, BriefcaseMedical, Zap, PackagePlus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface UnifiedLogPanelProps {
@@ -25,6 +25,7 @@ const getIconForType = (type: LogEventType) => {
     case 'shop_weapon_purchase': return <Sword className="h-4 w-4 text-orange-500" />;
     case 'shop_armor_purchase': return <ShieldHalf className="h-4 w-4 text-blue-600" />;
     case 'shop_healing_purchase': return <BriefcaseMedical className="h-4 w-4 text-teal-500" />;
+    case 'shop_capacity_upgrade': return <PackagePlus className="h-4 w-4 text-indigo-400" />;
     case 'event_trigger': return <Megaphone className="h-4 w-4 text-indigo-500" />;
     case 'event_player_impact': return <Zap className="h-4 w-4 text-yellow-600" />;
     case 'info':
@@ -50,7 +51,7 @@ export function UnifiedLogPanel({ eventLog }: UnifiedLogPanelProps) {
   const eventLogs = eventLog.filter(entry => entry.type === 'event_trigger');
   const actionLogs = eventLog.filter(entry => ['combat_win', 'combat_loss', 'health_update', 'rank_up', 'game_over', 'event_player_impact', 'info'].includes(entry.type));
   const travelLogs = eventLog.filter(entry => entry.type === 'travel');
-  const dealLogs = eventLog.filter(entry => ['buy', 'sell', 'shop_weapon_purchase', 'shop_armor_purchase', 'shop_healing_purchase'].includes(entry.type));
+  const dealLogs = eventLog.filter(entry => ['buy', 'sell', 'shop_weapon_purchase', 'shop_armor_purchase', 'shop_healing_purchase', 'shop_capacity_upgrade'].includes(entry.type));
 
   const renderLogList = (logs: LogEntry[], categoryName: string) => {
     if (logs.length === 0) {

@@ -110,6 +110,25 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               )}
             </AccordionContent>
           </AccordionItem>
+          
+          {playerStats.purchasedUpgradeIds.length > 0 && (
+            <AccordionItem value="upgrades">
+              <AccordionTrigger className="py-2.5 text-sm font-medium hover:no-underline text-muted-foreground hover:text-accent [&[data-state=open]>svg]:text-accent">
+                <div className="flex items-center space-x-3">
+                  <PackagePlus className="h-5 w-5 text-accent" />
+                  <span>Owned Upgrades</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-0 pb-0 pl-3 pr-1">
+                {/* This is a simple display. You might want to fetch upgrade names from a lookup if needed */}
+                {playerStats.purchasedUpgradeIds.map(upgradeId => (
+                   <p key={upgradeId} className="text-xs py-1 border-b border-border/30 last:border-b-0">
+                     {upgradeId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                   </p>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
         </Accordion>
       </CardContent>
     </Card>

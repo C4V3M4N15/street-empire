@@ -1,11 +1,12 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon, Armor, HealingItem } from '@/types/game';
+import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 import type { GameEvent } from '@/types/events';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { simulateCombat, type CombatOutcome } from '@/services/combat';
-import { getShopWeapons, getShopArmor, getShopHealingItems } from '@/services/shopItems';
+import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgrades } from '@/services/shopItems';
 import { getTodaysEvents, drugCategories as eventDrugCategories } from '@/services/eventService'; // Import event service
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
@@ -27,6 +28,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   maxInventoryCapacity: 10, 
   equippedWeapon: null, 
   equippedArmor: null, 
+  purchasedUpgradeIds: [],
 };
 
 // Helper function to apply event-based price modifiers
@@ -78,6 +80,7 @@ export function useGameLogic() {
       availableWeapons: [],
       availableArmor: [],
       availableHealingItems: [],
+      availableCapacityUpgrades: [],
       activeBoroughEvents: {}, // Initialize empty
       boroughHeatLevels: initialHeatLevels, // Initialize with 0 for all boroughs
       playerActivityInBoroughsThisDay: {}, // Initialize for player activity tracking
@@ -96,12 +99,13 @@ export function useGameLogic() {
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
     try {
-      const [prices, headlines, weapons, armor, healingItems, dailyEvents] = await Promise.all([
+      const [prices, headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
         getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
         getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation),
         getShopWeapons(),
         getShopArmor(),
         getShopHealingItems(),
+        getShopCapacityUpgrades(),
         getTodaysEvents(), // Fetch initial day's events
       ]);
       
@@ -127,6 +131,7 @@ export function useGameLogic() {
         availableWeapons: weapons,
         availableArmor: armor,
         availableHealingItems: healingItems,
+        availableCapacityUpgrades: capacityUpgrades,
         activeBoroughEvents: dailyEvents,
         boroughHeatLevels: initialBoroughHeat,
         isLoadingMarket: false,
@@ -364,6 +369,38 @@ export function useGameLogic() {
           ...currentStats,
           cash: newCash,
           health: newHealth,
+        }
+      };
+    });
+  }, [toast, addLogEntry]);
+
+  const buyCapacityUpgrade = useCallback((upgradeToBuy: CapacityUpgrade) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      if (currentStats.purchasedUpgradeIds.includes(upgradeToBuy.id)) {
+        toast({ title: "Already Owned", description: `You already have the ${upgradeToBuy.name}.`, variant: "default" });
+        return prev;
+      }
+      if (currentStats.cash < upgradeToBuy.price) {
+        toast({ title: "Not Enough Cash", description: `You need $${upgradeToBuy.price.toLocaleString()} for the ${upgradeToBuy.name}.`, variant: "destructive" });
+        return prev;
+      }
+
+      const newCash = currentStats.cash - upgradeToBuy.price;
+      const newMaxCapacity = currentStats.maxInventoryCapacity + upgradeToBuy.capacityIncrease;
+      const newPurchasedUpgradeIds = [...currentStats.purchasedUpgradeIds, upgradeToBuy.id];
+
+      const successMsg = `Purchased ${upgradeToBuy.name} for $${upgradeToBuy.price.toLocaleString()}. Capacity increased by ${upgradeToBuy.capacityIncrease} units.`;
+      toast({ title: "Upgrade Acquired!", description: successMsg });
+      addLogEntry('shop_capacity_upgrade', successMsg);
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          maxInventoryCapacity: newMaxCapacity,
+          purchasedUpgradeIds: newPurchasedUpgradeIds,
         }
       };
     });
@@ -646,6 +683,7 @@ export function useGameLogic() {
       availableWeapons: [],
       availableArmor: [],
       availableHealingItems: [],
+      availableCapacityUpgrades: [],
       activeBoroughEvents: {},
       boroughHeatLevels: initialHeatLevelsReset,
       playerActivityInBoroughsThisDay: {},
@@ -661,6 +699,7 @@ export function useGameLogic() {
     buyWeapon,
     buyArmor,
     buyHealingItem,
+    buyCapacityUpgrade,
     handleNextDay,
     resetGame,
     travelToLocation,

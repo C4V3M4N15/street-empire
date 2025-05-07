@@ -38,6 +38,14 @@ export interface HealingItem {
   isFullHeal?: boolean; // True if this item restores to full health
 }
 
+export interface CapacityUpgrade {
+  id: string;
+  name: string;
+  price: number;
+  capacityIncrease: number;
+  description: string;
+}
+
 export interface PlayerStats {
   name: string;
   health: number;
@@ -50,6 +58,7 @@ export interface PlayerStats {
   maxInventoryCapacity: number; // Maximum number of drug units player can carry
   equippedWeapon: Weapon | null; // Player's current weapon, null for fists
   equippedArmor: Armor | null; // Player's current armor, null for no armor
+  purchasedUpgradeIds: string[]; // IDs of one-time capacity upgrades purchased
 }
 
 export type LogEventType =
@@ -64,6 +73,7 @@ export type LogEventType =
   | 'shop_weapon_purchase'
   | 'shop_armor_purchase'
   | 'shop_healing_purchase'
+  | 'shop_capacity_upgrade' // New log type for capacity upgrades
   | 'event_trigger' // For borough-wide events affecting the environment
   | 'event_player_impact' // For events directly impacting the player
   | 'info'; // General information
@@ -87,6 +97,7 @@ export interface GameState {
   availableWeapons: Weapon[];
   availableArmor: Armor[];
   availableHealingItems: HealingItem[];
+  availableCapacityUpgrades: CapacityUpgrade[]; // Added for shop
   activeBoroughEvents: Record<string, GameEvent | null>; // Borough name -> active event or null
   boroughHeatLevels: Record<string, number>; // Borough name -> heat level (0-5)
   playerActivityInBoroughsThisDay: Record<string, number>; // Tracks count of illegal activities in a borough today
