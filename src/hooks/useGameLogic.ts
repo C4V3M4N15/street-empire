@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -7,7 +6,7 @@ import type { GameEvent } from '@/types/events';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { generateEnemyStats, getBattleResultConsequences, type BattleResult } from '@/services/combat';
 import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgrades } from '@/services/shopItems';
-import { getTodaysEvents, drugCategories as eventDrugCategories, resetUniqueEvents } from '@/services/eventService'; 
+import { getTodaysEvents, drugCategories, resetUniqueEvents } from '@/services/eventService'; 
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; 
 
@@ -46,7 +45,7 @@ const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null):
     });
     // Category modifiers
     event.effects.categoryPriceModifiers?.forEach(catMod => {
-      const categoryDrugs = eventDrugCategories[catMod.categoryKey] || [];
+      const categoryDrugs = drugCategories[catMod.categoryKey] || [];
       if (categoryDrugs.includes(dp.drug)) {
         newPrice *= catMod.factor;
       }
@@ -95,9 +94,39 @@ export function useGameLogic() {
     }));
   }, []);
 
+  const applyHeadlineImpacts = useCallback((prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
+    if (!headlines || headlines.length === 0) return prices;
+  
+    return prices.map(drugPrice => {
+      let newPrice = drugPrice.price;
+      headlines.forEach(headline => {
+        let applyThisHeadline = false;
+        if (headline.affectedDrug && headline.affectedDrug === drugPrice.drug) {
+          applyThisHeadline = true;
+        } else if (headline.affectedCategories && headline.affectedCategories.length > 0) {
+          for (const catKey of headline.affectedCategories) {
+            const drugsInCat = drugCategories[catKey as keyof typeof drugCategories];
+            if (drugsInCat?.includes(drugPrice.drug)) {
+              applyThisHeadline = true;
+              break;
+            }
+          }
+        } else if (!headline.affectedDrug && (!headline.affectedCategories || headline.affectedCategories.length === 0)) {
+          // General headline, applies to all if no specific drug or category is mentioned
+          applyThisHeadline = true;
+        }
+  
+        if (applyThisHeadline) {
+          newPrice *= (1 + headline.priceImpact);
+        }
+      });
+      return { ...drugPrice, price: Math.max(1, Math.round(newPrice)) };
+    });
+  }, []); // drugCategories is stable, so not needed in dep array if imported directly from module scope
+
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
-    resetUniqueEvents(); // Reset unique event tracking for a new game
+    resetUniqueEvents(); 
     try {
       const [prices, headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
         getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
@@ -145,21 +174,13 @@ export function useGameLogic() {
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry]); // gameState.boroughHeatLevels removed to avoid re-fetch on heat change
+  }, [toast, addLogEntry, applyHeadlineImpacts]);
 
   useEffect(() => {
     fetchInitialData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  const applyHeadlineImpacts = (prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
-    if (!headlines.length) return prices;
-    return prices.map(drugPrice => {
-      let newPrice = drugPrice.price;
-      headlines.forEach(headline => { newPrice *= (1 + headline.priceImpact); });
-      return { ...drugPrice, price: Math.max(1, Math.round(newPrice)) };
-    });
-  };
 
   const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
     setGameState(prev => {
@@ -268,7 +289,7 @@ export function useGameLogic() {
       })();
       return { ...prev, playerStats: { ...prev.playerStats, currentLocation: targetLocation }};
     });
-  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents]);
+  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts]);
 
   const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
     try { return await getLocalHeadlines(location); } 
@@ -382,7 +403,7 @@ export function useGameLogic() {
 
     // Player impact from event in current location
     if (eventInCurrentLocation?.effects.playerImpact) {
-      const impact = eventInCurrentLocation.effects.playerImpact;
+      const impact = eventInCurrentLocation.effects;
       toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
       addLogEntry('event_player_impact', `${eventInCurrentLocation.name}: ${impact.message}`);
       if (impact.healthChange) { currentStats.health = Math.max(0, Math.min(MAX_PLAYER_HEALTH, currentStats.health + impact.healthChange)); addLogEntry('health_update', `Health ${impact.healthChange > 0 ? '+' : ''}${impact.healthChange}. Now ${currentStats.health}.`); }
@@ -398,7 +419,7 @@ export function useGameLogic() {
          let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; 
          if (impact.triggerCombat === 'police_raid') opponentTypeForEvent = 'police';
          else if (impact.triggerCombat === 'gang_activity') opponentTypeForEvent = 'gang';
-         else if (impact.triggerCombat === 'fiend_encounter') opponentTypeForEvent = 'fiend'; // Added specific fiend case
+         else if (impact.triggerCombat === 'fiend_encounter') opponentTypeForEvent = 'fiend'; 
          startBattle(opponentTypeForEvent);
       }
     }
@@ -422,7 +443,7 @@ export function useGameLogic() {
       let selectedOpponentType: 'police' | 'gang' | 'fiend';
       const randomRoll = Math.random();
       // Weighted selection based on heat
-      if (randomRoll < (0.25 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police'; // More police in high heat
+      if (randomRoll < (0.25 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police'; 
       else if (randomRoll < (0.60 + heatInCurrentLocation * 0.05)) selectedOpponentType = 'gang'; 
       else selectedOpponentType = 'fiend';
       addLogEntry('info', `Encountered ${selectedOpponentType} in ${currentStats.currentLocation}. Heat: ${heatInCurrentLocation}.`);
@@ -464,7 +485,7 @@ export function useGameLogic() {
       }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle]);
+  }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle, applyHeadlineImpacts]);
 
   const resetGame = useCallback(() => {
      const initialHeatLevelsReset: Record<string, number> = {};
