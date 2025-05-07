@@ -28,65 +28,80 @@ export interface LocalHeadline {
 }
 
 const ALL_DRUGS = [
-  { name: 'Weed', basePrice: 300, volatility: 0.3 },
-  { name: 'Cocaine', basePrice: 13000, volatility: 0.5 }, // Was 18000
-  { name: 'Heroin', basePrice: 9000, volatility: 0.45 }, // Was 12000
-  { name: 'MDMA', basePrice: 1500, volatility: 0.35 },
-  { name: 'LSD', basePrice: 800, volatility: 0.4 },
-  { name: 'Meth', basePrice: 4500, volatility: 0.55 }, // Was 6000
-  { name: 'Mushrooms', basePrice: 500, volatility: 0.3 },
-  { name: 'Opium', basePrice: 5000, volatility: 0.4 }, // Was 7000
-  { name: 'Ketamine', basePrice: 2000, volatility: 0.38 },
-  { name: 'PCP', basePrice: 1200, volatility: 0.42 },
-  { name: 'Xanax', basePrice: 50, volatility: 0.25 },
-  { name: 'Valium', basePrice: 40, volatility: 0.2 },
-  { name: 'Steroids', basePrice: 300, volatility: 0.3 },
-  { name: 'Fentanyl', basePrice: 15000, volatility: 0.6 }, // Was 20000
-  { name: 'Crack', basePrice: 1000, volatility: 0.5 },
+  { name: 'Weed', basePrice: 250, volatility: 0.3 }, // Adjusted base price
+  { name: 'Cocaine', basePrice: 12000, volatility: 0.5 }, // Adjusted base price
+  { name: 'Heroin', basePrice: 8000, volatility: 0.45 }, // Adjusted base price
+  { name: 'MDMA', basePrice: 1300, volatility: 0.35 }, // Adjusted base price
+  { name: 'LSD', basePrice: 700, volatility: 0.4 }, // Adjusted base price
+  { name: 'Meth', basePrice: 4000, volatility: 0.55 }, // Adjusted base price
+  { name: 'Mushrooms', basePrice: 400, volatility: 0.3 }, // Adjusted base price
+  { name: 'Opium', basePrice: 4500, volatility: 0.4 }, // Adjusted base price
+  { name: 'Ketamine', basePrice: 1800, volatility: 0.38 }, // Adjusted base price
+  { name: 'PCP', basePrice: 1000, volatility: 0.42 }, // Adjusted base price
+  { name: 'Xanax', basePrice: 40, volatility: 0.25 }, // Adjusted base price
+  { name: 'Valium', basePrice: 30, volatility: 0.2 }, // Adjusted base price
+  { name: 'Steroids', basePrice: 250, volatility: 0.3 }, // Adjusted base price
+  { name: 'Fentanyl', basePrice: 14000, volatility: 0.6 }, // Adjusted base price
+  { name: 'Crack', basePrice: 800, volatility: 0.5 }, // Adjusted base price
+  // Adding more drugs
+  { name: 'Spice', basePrice: 150, volatility: 0.35 },
+  { name: 'GHB', basePrice: 600, volatility: 0.4 },
+  { name: 'Rohypnol', basePrice: 200, volatility: 0.3 },
+  { name: 'Adderall', basePrice: 100, volatility: 0.25 },
+  { name: 'OxyContin', basePrice: 2500, volatility: 0.45 },
+  { name: 'Codeine Syrup', basePrice: 350, volatility: 0.3 },
+  { name: 'Poppers (Amyl Nitrite)', basePrice: 80, volatility: 0.2 },
+  { name: 'DMT', basePrice: 3000, volatility: 0.5 },
+  { name: 'Mescaline', basePrice: 1200, volatility: 0.4 },
+  { name: 'Ayahuasca Brew', basePrice: 1500, volatility: 0.45 },
 ];
 
 const ALL_HEADLINES = [
-  { text: "Police crack down on {drug} trade. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
-  { text: "Major bust! {drug} supply dwindles.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
-  { text: "New synthetic {drug} floods the market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.4, positive: false },
-  { text: "Celebrity overdoses on {drug}. Public outcry!", impactDrugSpecific: true, impactFactor: -0.2, positive: false },
-  { text: "Economic boom! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
-  { text: "Recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
-  { text: "Music festival in town! Demand for party drugs up.", impactDrugSpecific: false, impactCategory: ['MDMA', 'LSD', 'Mushrooms', 'Cocaine'], impactFactor: 0.25, positive: true },
-  { text: "Tech conference attendees seek focus enhancers.", impactDrugSpecific: false, impactCategory: ['Meth', 'Cocaine'], impactFactor: 0.18, positive: true },
-  { text: "Increased border patrol. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.2, positive: true },
-  { text: "New legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.15, positive: false },
-  { text: "Rival gang war disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.1, positive: true },
-  { text: "Health crisis leads to crackdown on opioids.", impactDrugSpecific: false, impactCategory: ['Heroin', 'Opium', 'Fentanyl', 'PCP'], impactFactor: 0.3, positive: true },
-  { text: "Influencer promotes microdosing. Psychedelics popular.", impactDrugSpecific: false, impactCategory: ['LSD', 'Mushrooms'], impactFactor: 0.12, positive: true },
-  { text: "Heatwave! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.05, positive: false },
+  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
+  { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
+  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.4, positive: false },
+  { text: "Celebrity overdoses on {drug} in a Manhattan penthouse. Public outcry!", impactDrugSpecific: true, impactFactor: -0.2, positive: false },
+  { text: "Economic boom in NYC! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
+  { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
+  { text: "Music festival in Brooklyn! Demand for party drugs up.", impactDrugSpecific: false, impactCategory: ['MDMA', 'LSD', 'Mushrooms', 'Cocaine', 'Ketamine'], impactFactor: 0.25, positive: true },
+  { text: "Wall Street traders seek focus enhancers. Demand high in Manhattan.", impactDrugSpecific: false, impactCategory: ['Meth', 'Cocaine', 'Adderall'], impactFactor: 0.18, positive: true },
+  { text: "Increased patrols on bridges and tunnels. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.2, positive: true },
+  { text: "New city legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.15, positive: false },
+  { text: "Rival gang war in The Bronx disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.1, positive: true },
+  { text: "Health crisis in Queens leads to crackdown on opioids.", impactDrugSpecific: false, impactCategory: ['Heroin', 'Opium', 'Fentanyl', 'PCP', 'OxyContin'], impactFactor: 0.3, positive: true },
+  { text: "Influencer promotes microdosing in trendy Brooklyn cafes. Psychedelics popular.", impactDrugSpecific: false, impactCategory: ['LSD', 'Mushrooms', 'Mescaline', 'DMT'], impactFactor: 0.12, positive: true },
+  { text: "Heatwave grips NYC! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.05, positive: false },
+  { text: "Staten Island Ferry becomes popular spot for discreet deals.", impactDrugSpecific: false, impactFactor: 0.05, positive: true }, // Example location-themed headline
+  { text: "Art scene in Queens creates demand for 'creative' substances.", impactDrugSpecific: false, impactCategory: ['Weed', 'LSD', 'Mushrooms', 'Spice'], impactFactor: 0.1, positive: true},
 ];
 
 
 /**
  * Asynchronously retrieves the current market prices for drugs.
- * @param location The current location of the player
+ * @param location The current location of the player (e.g., "Manhattan", "Brooklyn")
  * @returns A promise that resolves to an array of DrugPrice objects.
  */
 export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
 
-  // Determine number of drugs to show (e.g., 5 to 8)
-  const numDrugsToShow = 5 + Math.floor(Math.random() * 4);
+  // Determine number of drugs to show (e.g., 7 to 12)
+  const numDrugsToShow = 7 + Math.floor(Math.random() * 6);
   const shuffledDrugs = [...ALL_DRUGS].sort(() => 0.5 - Math.random());
   const selectedDrugs = shuffledDrugs.slice(0, numDrugsToShow);
 
   return selectedDrugs.map(drug => {
     const priceFluctuation = (Math.random() - 0.5) * 2 * drug.volatility; // -volatility to +volatility
     let price = drug.basePrice * (1 + priceFluctuation);
-    // Add location-based modifier (simple example)
+    
+    // Add location-based modifier for NYC boroughs
     switch (location) {
-      case "New York": price *= 1.1; break;
-      case "Los Angeles": price *= 1.05; break;
-      case "Miami": price *= 1.15; break;
-      case "Chicago": price *= 0.95; break;
-      case "Houston": price *= 0.9; break;
+      case "Manhattan": price *= 1.20; break; // Highest prices
+      case "Brooklyn": price *= 1.10; break;  // Higher prices
+      case "Queens": price *= 1.00; break;    // Average prices
+      case "The Bronx": price *= 0.90; break; // Lower prices
+      case "Staten Island": price *= 0.85; break; // Lowest prices
+      default: price *= 1.0; // Default if location not matched
     }
     return {
       drug: drug.name,
@@ -97,7 +112,7 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
 
 /**
  * Asynchronously retrieves the local headlines for the current day.
- * @param location The current location of the player
+ * @param location The current location of the player (e.g., "Manhattan", "Brooklyn")
  * @returns A promise that resolves to an array of LocalHeadline objects.
  */
 export async function getLocalHeadlines(location: string): Promise<LocalHeadline[]> {
@@ -118,24 +133,22 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
     let headlineText = selectedHeadlineTemplate.text;
     let priceImpact = selectedHeadlineTemplate.impactFactor;
 
+    headlineText = headlineText.replace("{location}", location); // Replace location placeholder
+
     if (selectedHeadlineTemplate.impactDrugSpecific) {
-      // Select a random drug from the main list for drug-specific headlines
       const randomDrug = ALL_DRUGS[Math.floor(Math.random() * ALL_DRUGS.length)].name;
       headlineText = headlineText.replace("{drug}", randomDrug);
-      // For drug-specific headlines, the impact might only apply to that drug or related ones.
-      // This is simplified here; a more complex system would adjust specific drug prices.
-      // For now, we'll treat it as a general market impact if it's drug-specific.
     }
     
-    // If it's category specific, and we picked one, that's fine.
-    // The applyHeadlineImpacts function in useGameLogic will handle the actual price adjustment.
+    // Category-specific impacts are handled by applyHeadlineImpacts in useGameLogic by checking drug names against categories
+    // Here, we just pass the headline and its general impact factor.
+    // A more advanced system could make priceImpact an object like: { general: 0.1, categoryX: 0.2, drugY: -0.1 }
 
     headlines.push({
       headline: headlineText,
-      priceImpact: priceImpact,
+      priceImpact: priceImpact, // The applyHeadlineImpacts function will use this
     });
   }
 
   return headlines;
 }
-

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -8,6 +7,8 @@ import { simulateCombat, type CombatOutcome } from '@/services/combat';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
 
+const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
+
 const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
   health: 100,
@@ -15,11 +16,10 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   inventory: {},
   reputation: 0,
   daysPassed: 0,
-  currentLocation: 'New York', 
+  currentLocation: NYC_LOCATIONS[0], // Start in Manhattan
   rank: 'Rookie',
 };
 
-const CITIES = ["New York", "Los Angeles", "Miami", "Chicago", "Houston"];
 
 export function useGameLogic() {
   const [gameState, setGameState] = useState<GameState>({
@@ -54,7 +54,7 @@ export function useGameLogic() {
         localHeadlines: headlines,
         isLoadingMarket: false,
       }));
-      addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}.`);
+      addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market data loaded.`);
     } catch (error) {
       console.error("Failed to fetch initial market data:", error);
       toast({ title: "Error", description: "Could not load market data.", variant: "destructive" });
@@ -70,8 +70,6 @@ export function useGameLogic() {
   const applyHeadlineImpacts = (prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
     if (!headlines.length) return prices;
     
-    // Simplified: apply each headline's impact additively to all drugs
-    // A more complex model could have drug-specific or category-specific impacts
     return prices.map(drugPrice => {
       let newPrice = drugPrice.price;
       headlines.forEach(headline => {
@@ -184,18 +182,19 @@ export function useGameLogic() {
 
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
-    addLogEntry('info', `Day ${currentStats.daysPassed} begins.`);
+    addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}.`);
     
-    // Travel
-    if (currentStats.daysPassed % 7 === 0) {
-        const currentLocationIndex = CITIES.indexOf(currentStats.currentLocation);
-        currentStats.currentLocation = CITIES[(currentLocationIndex + 1) % CITIES.length];
+    // Travel every 5 days
+    if (currentStats.daysPassed > 0 && currentStats.daysPassed % 5 === 0) { 
+        const currentLocationIndex = NYC_LOCATIONS.indexOf(currentStats.currentLocation);
+        const nextLocationIndex = (currentLocationIndex + 1) % NYC_LOCATIONS.length;
+        currentStats.currentLocation = NYC_LOCATIONS[nextLocationIndex];
         const travelMsg = `You moved to ${currentStats.currentLocation}.`;
-        toast({ title: "Travel", description: travelMsg });
+        toast({ title: "Travel Update", description: travelMsg });
         addLogEntry('travel', travelMsg);
     }
 
-    // Market Update
+    // Market Update for the current (potentially new) location
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -210,10 +209,10 @@ export function useGameLogic() {
     }
     
     // Random Event: Combat
-    if (Math.random() < 0.35) { // Increased probability for testing
+    if (Math.random() < 0.3) { // 30% chance of combat
       const opponentTypes = ["police", "gang", "fiend"] as const;
       const opponentType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
-      const encounterMsg = `You've run into ${opponentType === 'police' ? 'the police' : opponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'}!`;
+      const encounterMsg = `You've run into ${opponentType === 'police' ? 'the police' : opponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}!`;
       toast({ title: "Encounter!", description: encounterMsg, duration: 4000 });
       addLogEntry('info', encounterMsg);
       
@@ -224,10 +223,8 @@ export function useGameLogic() {
         currentStats.cash += combatOutcome.cashChange;
         currentStats.reputation += combatOutcome.reputationChange;
 
-        // Ensure stats don't go below zero where applicable
         currentStats.health = Math.max(0, currentStats.health);
         currentStats.cash = Math.max(0, currentStats.cash);
-        // Reputation can be negative
 
         toast({
           title: combatOutcome.playerWins ? "Victory!" : "Defeat!",
@@ -260,15 +257,15 @@ export function useGameLogic() {
       const gameOverMsg = "Your health reached 0. Game Over.";
       setGameState(prev => ({
         ...prev,
-        playerStats: { ...currentStats, health: 0 }, // Final stats update
+        playerStats: { ...currentStats, health: 0 }, 
         isGameOver: true,
         isLoadingNextDay: false,
-        marketPrices: newMarketPrices, // Update market prices even on game over
+        marketPrices: newMarketPrices, 
         localHeadlines: newLocalHeadlines,
       }));
       toast({ title: "Game Over", description: gameOverMsg, variant: "destructive" });
       addLogEntry('game_over', gameOverMsg);
-      return; // End a_sync processing for this day
+      return; 
     }
     
     // Rank Update
@@ -307,11 +304,20 @@ export function useGameLogic() {
       isGameOver: false,
       gameMessage: null,
     });
+    // Re-fetch initial market data for the new game, starting in INITIAL_PLAYER_STATS.currentLocation
+    addLogEntry('info', 'Game reset.');
     fetchInitialMarketData(); 
-  }, [fetchInitialMarketData]);
+  }, [fetchInitialMarketData, addLogEntry]);
 
   return {
     ...gameState,
+    playerStats: gameState.playerStats,
+    marketPrices: gameState.marketPrices,
+    localHeadlines: gameState.localHeadlines,
+    eventLog: gameState.eventLog,
+    isLoadingNextDay: gameState.isLoadingNextDay,
+    isLoadingMarket: gameState.isLoadingMarket,
+    isGameOver: gameState.isGameOver,
     buyDrug,
     sellDrug,
     handleNextDay,
