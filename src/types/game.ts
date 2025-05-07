@@ -61,6 +61,18 @@ export interface PlayerStats {
   purchasedUpgradeIds: string[]; // IDs of one-time capacity upgrades purchased
 }
 
+export interface EnemyStats {
+  id: string;
+  name: string;
+  health: number;
+  maxHealth: number;
+  attack: number;
+  defense: number;
+  spriteSeed?: string; // For generating a consistent placeholder image
+  defeatCashReward?: number;
+  defeatRepReward?: number;
+}
+
 export type LogEventType =
   | 'buy'
   | 'sell'
@@ -76,6 +88,7 @@ export type LogEventType =
   | 'shop_capacity_upgrade' // New log type for capacity upgrades
   | 'event_trigger' // For borough-wide events affecting the environment
   | 'event_player_impact' // For events directly impacting the player
+  | 'battle_action' // For individual actions within a battle
   | 'info'; // General information
 
 export interface LogEntry {
@@ -97,8 +110,14 @@ export interface GameState {
   availableWeapons: Weapon[];
   availableArmor: Armor[];
   availableHealingItems: HealingItem[];
-  availableCapacityUpgrades: CapacityUpgrade[]; // Added for shop
-  activeBoroughEvents: Record<string, GameEvent | null>; // Borough name -> active event or null
-  boroughHeatLevels: Record<string, number>; // Borough name -> heat level (0-5)
-  playerActivityInBoroughsThisDay: Record<string, number>; // Tracks count of illegal activities in a borough today
+  availableCapacityUpgrades: CapacityUpgrade[]; 
+  activeBoroughEvents: Record<string, GameEvent | null>; 
+  boroughHeatLevels: Record<string, number>; 
+  playerActivityInBoroughsThisDay: Record<string, number>; 
+  
+  // Battle State
+  isBattleActive: boolean;
+  currentEnemy: EnemyStats | null;
+  battleLog: LogEntry[]; // Specific log for the current battle
+  battleMessage: string | null; // Message to display on battle screen (e.g., victory/defeat)
 }

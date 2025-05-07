@@ -5,7 +5,8 @@ import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
 import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
 import { GameOverDialog } from '@/components/game/GameOverDialog';
-import { UnifiedLogPanel } from '@/components/game/UnifiedLogPanel'; // Updated import
+import { UnifiedLogPanel } from '@/components/game/UnifiedLogPanel';
+import { BattleScreen } from '@/components/game/BattleScreen'; // New Import
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -34,6 +35,13 @@ export default function StreetEmpirePage() {
     resetGame,
     travelToLocation,
     fetchHeadlinesForLocation,
+    // Battle State & Actions
+    isBattleActive,
+    currentEnemy,
+    battleLog,
+    battleMessage,
+    handlePlayerBattleAction,
+    endBattleScreen,
   } = useGameLogic();
 
   if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) {
@@ -43,6 +51,20 @@ export default function StreetEmpirePage() {
         <h1 className="text-3xl font-bold mb-2">Street Empire</h1>
         <p className="text-lg text-muted-foreground">Loading game data...</p>
       </div>
+    );
+  }
+
+  if (isBattleActive && currentEnemy) {
+    return (
+      <BattleScreen
+        playerStats={playerStats}
+        enemyStats={currentEnemy}
+        battleLog={battleLog}
+        battleMessage={battleMessage}
+        onPlayerAction={handlePlayerBattleAction}
+        onEndBattle={endBattleScreen}
+        isLoading={isLoadingNextDay} // Pass loading state for disabling actions during processing
+      />
     );
   }
 
@@ -81,7 +103,7 @@ export default function StreetEmpirePage() {
             travelToLocation={travelToLocation}
             fetchHeadlinesForLocation={fetchHeadlinesForLocation}
           />
-           <UnifiedLogPanel eventLog={eventLog} /> {/* Updated component */}
+           <UnifiedLogPanel eventLog={eventLog} />
         </div>
       </main>
 
@@ -94,9 +116,8 @@ export default function StreetEmpirePage() {
         />
       </div>
 
-
       <GameOverDialog
-        isOpen={isGameOver}
+        isOpen={isGameOver && !isBattleActive} // Only show if game is over AND not in a battle that caused it
         onClose={resetGame}
         daysPassed={playerStats.daysPassed}
         finalCash={playerStats.cash}
@@ -105,7 +126,6 @@ export default function StreetEmpirePage() {
 
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Street Empire. All rights reserved (not really).</p>
-        <p>Press 'Cmd/Ctrl + B' to toggle sidebar (if one was implemented).</p>
       </footer>
     </div>
   );
