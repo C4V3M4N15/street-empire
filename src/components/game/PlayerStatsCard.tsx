@@ -40,7 +40,9 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
 
   const currentWeaponName = playerStats.equippedWeapon ? playerStats.equippedWeapon.name : 'Fists';
   // Player's attack power is now directly the weapon's damageBonus, or PLAYER_BASE_ATTACK if unarmed.
-  const totalDamage = playerStats.equippedWeapon?.damageBonus || PLAYER_BASE_ATTACK;
+  const weaponDamageBonus = playerStats.equippedWeapon?.damageBonus || 0;
+  const totalDamage = playerStats.equippedWeapon ? weaponDamageBonus : PLAYER_BASE_ATTACK;
+
 
   const currentArmorName = playerStats.equippedArmor ? playerStats.equippedArmor.name : 'None';
   const armorProtectionBonus = playerStats.equippedArmor?.protectionBonus || 0;
@@ -76,7 +78,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-0 pb-0 pl-1 pr-1">
-              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (DMG: ${playerStats.equippedWeapon?.damageBonus || 0})`} iconColor="text-orange-500" className="border-t-0" />
+              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (DMG: ${playerStats.equippedWeapon ? weaponDamageBonus : PLAYER_BASE_ATTACK})`} iconColor="text-orange-500" className="border-t-0" />
               {playerStats.equippedWeapon?.isFirearm && (
                 <StatItem icon={Target} label="Ammo" value={ammoDisplay} iconColor="text-yellow-600" />
               )}
@@ -145,3 +147,4 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     </Card>
   );
 }
+
