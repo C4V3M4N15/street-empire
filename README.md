@@ -1,5 +1,3 @@
 # Firebase Studio
 
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+this is a game i built with firebase studio! im a vibe coder with ideas for daysss! XP im desperately trying to get my ideas out and into the world so i can generate some income!
