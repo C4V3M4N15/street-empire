@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent, ArrowUpCircle, ArrowDownCircle, MinusCircle } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent, Arrow Icons
 import type { PlayerStats, GameState } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -90,6 +90,12 @@ export function MarketInfoCard({
     return isNaN(val) || val < 0 ? 0 : val;
   };
 
+  const getPriceChangeIcon = (direction?: DrugPrice['priceChangeDirection']) => {
+    if (direction === 'up') return <ArrowUpCircle className="h-3 w-3 mr-0.5 text-red-500" />;
+    if (direction === 'down') return <ArrowDownCircle className="h-3 w-3 mr-0.5 text-green-500" />;
+    return <MinusCircle className="h-3 w-3 mr-0.5 text-muted-foreground" />;
+  }
+
   const renderSkeletons = () => (
     <>
       <div className="mb-4">
@@ -167,19 +173,26 @@ export function MarketInfoCard({
                       const currentTotalUnits = Object.values(playerStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
                       const canFit = currentTotalUnits + currentQuantityInput <= playerStats.maxInventoryCapacity;
 
+                      const priceChangeColor = drug.priceChangeDirection === 'up' ? 'text-red-500' :
+                                               drug.priceChangeDirection === 'down' ? 'text-green-500' :
+                                               'text-muted-foreground';
+
                       return (
                         <React.Fragment key={drug.drug}>
                         <div className="py-2.5">
                           <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-1.5">
                             <div className="col-span-1 sm:col-span-1">
-                              <p className="text-sm font-medium truncate" title={drug.drug}>{drug.drug}</p>
+                              <p className={cn("text-sm font-medium truncate", priceChangeColor)} title={drug.drug}>
+                                {getPriceChangeIcon(drug.priceChangeDirection)}
+                                {drug.drug}
+                              </p>
                               <p className="text-xs text-muted-foreground">Have: {playerHoldings.toLocaleString()}</p>
                                <p className="text-xs text-muted-foreground flex items-center">
                                 <Percent className="h-3 w-3 mr-0.5 text-blue-400" />
                                 Volatility: {typeof drug.volatility === 'number' ? `${(drug.volatility * 100).toFixed(0)}%` : 'N/A'}
                               </p>
                             </div>
-                            <p className="text-sm font-semibold text-accent text-right sm:text-center">${drug.price.toLocaleString()}</p>
+                            <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p>
                             <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
                               <Input
                                 type="number"
@@ -334,8 +347,7 @@ export function MarketInfoCard({
                               disabled={isLoading || playerStats.cash < armorItem.price || playerStats.purchasedArmorIds.includes(armorItem.id)}
                               className="text-xs px-3"
                             >
-                              {playerStats.purchasedArmorIds.includes(armorItem.id) ? 'Owned' :
-                               (playerStats.equippedArmor?.id === armorItem.id ? 'Equipped' : 'Buy')}
+                              {playerStats.purchasedArmorIds.includes(armorItem.id) ? (playerStats.equippedArmor?.id === armorItem.id ? 'Equipped' : 'Owned') : 'Buy'}
                             </Button>
                           </div>
                         ))

@@ -15,6 +15,10 @@ export interface DrugPrice {
    * The base volatility of the drug.
    */
   volatility?: number;
+  /**
+   * Indicates the direction of price change compared to the previous day.
+   */
+  priceChangeDirection?: 'up' | 'down' | 'same' | 'new';
 }
 
 /**
@@ -129,11 +133,11 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
 
 
     switch (location) {
-      case "Manhattan": price *= 1.15; break; // Adjusted from 1.20
-      case "Brooklyn": price *= 1.08; break;  // Adjusted from 1.10
+      case "Manhattan": price *= 1.15; break;
+      case "Brooklyn": price *= 1.08; break;
       case "Queens": price *= 1.00; break;
-      case "The Bronx": price *= 0.92; break; // Adjusted from 0.90
-      case "Staten Island": price *= 0.88; break; // Adjusted from 0.85
+      case "The Bronx": price *= 0.92; break;
+      case "Staten Island": price *= 0.88; break;
       default: price *= 1.0;
     }
     return {
@@ -174,7 +178,7 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
 
     headlines.push({
       headline: headlineText,
-      priceImpact: selectedTemplate.impactFactor, // This is the raw +- percentage (e.g., 0.1 or -0.05)
+      priceImpact: selectedTemplate.impactFactor,
       affectedDrug: affectedDrugName,
       affectedCategories: selectedTemplate.impactCategory,
     });

@@ -102,6 +102,7 @@ export interface LogEntry {
 export interface GameState {
   playerStats: PlayerStats;
   marketPrices: DrugPrice[];
+  previousMarketPrices: DrugPrice[]; // Store prices from the day before for comparison
   localHeadlines: LocalHeadline[];
   eventLog: LogEntry[];
   isLoadingNextDay: boolean;
@@ -124,4 +125,4 @@ export interface GameState {
 }
 
 // Defines the actions a player can take during a battle
-export type PlayerBattleActionType = 'attack' | 'flee'; // Added 'flee'
+export type PlayerBattleActionType = 'attack' | 'flee';
