@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Shield, Sword, Heart, User, Skull, Zap, Loader2, Footprints } from 'lucide-react'; // Changed Run to Footprints
-import Image from 'next/image';
+import { Shield, Sword, Heart, User, Skull, Zap, Loader2, Footprints, Handshake } from 'lucide-react'; // Added Handshake for Bribe
 import { format, parseISO } from 'date-fns';
 import React, { useEffect, useRef } from 'react';
 
@@ -16,7 +15,7 @@ interface BattleScreenProps {
   enemyStats: EnemyStats;
   battleLog: LogEntry[];
   battleMessage: string | null;
-  onPlayerAction: (action: 'attack' | 'flee') => void;
+  onPlayerAction: (action: 'attack' | 'flee' | 'bribe') => void; // Added 'bribe'
   onEndBattle: () => void; 
   isLoading: boolean; 
 }
@@ -70,17 +69,9 @@ export function BattleScreen({
               <CardHeader className="pb-2 pt-3">
                 <CardTitle className="text-xl flex items-center"><User className="mr-2 h-5 w-5 text-primary" />{playerStats.name}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                <div className="w-full h-20 relative mb-2 rounded overflow-hidden border border-primary/30">
-                  <Image 
-                    src={`https://picsum.photos/seed/${playerStats.name.replace(/\s/g, '')}/200/100`} 
-                    alt="Player Avatar" 
-                    layout="fill" 
-                    objectFit="cover"
-                    data-ai-hint="player character" 
-                  />
-                </div>
-                <Progress value={ (playerStats.health / MAX_PLAYER_HEALTH) * 100 } aria-label="Player health" className="h-3 bg-red-700/50 [&>div]:bg-red-500" />
+              <CardContent className="space-y-2 text-xs pt-2">
+                {/* Removed Player Avatar Image */}
+                <Progress value={ (playerStats.health / MAX_PLAYER_HEALTH) * 100 } aria-label="Player health" className="h-3 bg-red-700/50 [&>div]:bg-red-500 mb-2" />
                 <StatDisplay icon={Heart} label="Health" value={`${playerStats.health} / ${MAX_PLAYER_HEALTH}`} iconColor="text-red-500" />
                 <StatDisplay icon={Sword} label="Attack" value={playerEffectiveAttack} />
                 <StatDisplay icon={Shield} label="Defense" value={playerEffectiveDefense} />
@@ -91,17 +82,9 @@ export function BattleScreen({
               <CardHeader className="pb-2 pt-3">
                 <CardTitle className="text-xl flex items-center"><Skull className="mr-2 h-5 w-5 text-destructive" />{enemyStats.name}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                 <div className="w-full h-20 relative mb-2 rounded overflow-hidden border border-destructive/30">
-                   <Image 
-                    src={`https://picsum.photos/seed/${enemyStats.spriteSeed || enemyStats.name.replace(/\s/g, '')}/200/100`} 
-                    alt={`${enemyStats.name} Avatar`} 
-                    layout="fill" 
-                    objectFit="cover"
-                    data-ai-hint="enemy character"
-                  />
-                 </div>
-                <Progress value={(enemyStats.health / enemyStats.maxHealth) * 100} aria-label={`${enemyStats.name} health`} className="h-3 bg-orange-700/50 [&>div]:bg-orange-500"/>
+              <CardContent className="space-y-2 text-xs pt-2">
+                 {/* Removed Enemy Avatar Image */}
+                <Progress value={(enemyStats.health / enemyStats.maxHealth) * 100} aria-label={`${enemyStats.name} health`} className="h-3 bg-orange-700/50 [&>div]:bg-orange-500 mb-2"/>
                 <StatDisplay icon={Heart} label="Health" value={`${enemyStats.health} / ${enemyStats.maxHealth}`} iconColor="text-orange-500" />
                 <StatDisplay icon={Sword} label="Attack" value={enemyStats.attack} />
                 <StatDisplay icon={Shield} label="Defense" value={enemyStats.defense} />
@@ -128,26 +111,33 @@ export function BattleScreen({
 
           {isBattleOver ? (
             <div className="text-center space-y-3 py-2">
-              <p className={`text-xl font-bold ${battleMessage === "You managed to escape!" || (playerStats.health > 0 && enemyStats.health <= 0) ? 'text-accent' : 'text-destructive'}`}>
+              <p className={`text-xl font-bold ${battleMessage === "You managed to escape!" || battleMessage === "Bribe successful!" || (playerStats.health > 0 && enemyStats.health <= 0) ? 'text-accent' : 'text-destructive'}`}>
                 {battleMessage}
               </p>
-              <Button onClick={onEndBattle} className="w-1/2" variant={battleMessage === "You managed to escape!" || (playerStats.health > 0 && enemyStats.health <= 0) ? "default" : "destructive"}>
+              <Button onClick={onEndBattle} className="w-1/2" variant={battleMessage === "You managed to escape!" || battleMessage === "Bribe successful!" || (playerStats.health > 0 && enemyStats.health <= 0) ? "default" : "destructive"}>
                 Continue
               </Button>
             </div>
           ) : (
-            <div className="flex justify-around items-center pt-2">
+            <div className="flex justify-around items-center pt-2 space-x-2">
               <Button 
                 onClick={() => onPlayerAction('attack')} 
                 disabled={isLoading}
-                className="w-2/5 py-3 text-base bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                className="flex-1 py-3 text-base bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Sword className="mr-2 h-5 w-5" /> Attack</>}
               </Button>
               <Button 
+                onClick={() => onPlayerAction('bribe')} 
+                disabled={isLoading || !enemyStats.bribable}
+                className="flex-1 py-3 text-base bg-yellow-600 hover:bg-yellow-600/90 text-white disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Handshake className="mr-2 h-5 w-5" /> Bribe</>}
+              </Button>
+              <Button 
                 onClick={() => onPlayerAction('flee')} 
                 disabled={isLoading}
-                className="w-2/5 py-3 text-base bg-blue-600 hover:bg-blue-600/90 text-white"
+                className="flex-1 py-3 text-base bg-blue-600 hover:bg-blue-600/90 text-white"
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Footprints className="mr-2 h-5 w-5" /> Flee</>}
               </Button>

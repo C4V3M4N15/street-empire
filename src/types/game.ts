@@ -78,6 +78,9 @@ export interface EnemyStats {
   spriteSeed?: string;
   defeatCashReward?: number;
   defeatRepReward?: number;
+  bribable?: boolean; // Can this enemy type be bribed?
+  bribeBaseCost?: number; // Base cost to attempt a bribe
+  bribeSuccessRate?: number; // Base success rate (0.0 to 1.0)
 }
 
 export type LogEventType =
@@ -93,10 +96,11 @@ export type LogEventType =
   | 'shop_armor_purchase'
   | 'shop_healing_purchase'
   | 'shop_capacity_upgrade'
-  | 'shop_ammo_purchase' // New log type for ammo
+  | 'shop_ammo_purchase'
   | 'event_trigger'
   | 'event_player_impact'
   | 'battle_action'
+  | 'bribe_attempt' // New log type for bribe attempts
   | 'info';
 
 export interface LogEntry {
@@ -131,4 +135,4 @@ export interface GameState {
   battleMessage: string | null;
 }
 
-export type PlayerBattleActionType = 'attack' | 'flee';
+export type PlayerBattleActionType = 'attack' | 'flee' | 'bribe';
