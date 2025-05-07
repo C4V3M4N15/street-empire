@@ -10,21 +10,21 @@ import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgra
 import { getTodaysEvents, drugCategories, resetUniqueEvents } from '@/services/eventService';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
-import type { User } from 'firebase/auth'; // Added
+import type { User } from 'firebase/auth';
 
 export const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
-const PLAYER_BASE_ATTACK = 5; // Damage with fists
-const PLAYER_BASE_DEFENSE = 2; // Base defense if no armor
+const PLAYER_BASE_ATTACK = 5; 
+const PLAYER_BASE_DEFENSE = 2; 
 const MAX_PLAYER_HEALTH = 100;
 
 const MISS_CHANCE = 0.15;
 const CRITICAL_HIT_CHANCE = 0.10;
 const CRITICAL_HIT_MULTIPLIER = 1.5;
 const FLEE_CHANCE_BASE = 0.33;
-const ENEMY_INITIATIVE_CHANCE = 0.30; // Chance enemy attacks first
+const ENEMY_INITIATIVE_CHANCE = 0.30; 
 
 const createInitialPlayerStats = (user: User | null): PlayerStats => ({
-  name: user?.displayName || 'Player1', // Use Firebase display name or fallback
+  name: user?.displayName || 'Player1', 
   health: MAX_PLAYER_HEALTH,
   cash: 1000,
   inventory: {},
@@ -38,6 +38,7 @@ const createInitialPlayerStats = (user: User | null): PlayerStats => ({
   equippedArmor: null,
   purchasedUpgradeIds: [],
   purchasedArmorIds: [],
+  travelsThisDay: 0, // Initialize travel count
 });
 
 interface DrugPriceWithLocation extends DrugPrice {
@@ -68,14 +69,14 @@ const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null):
 };
 
 
-export function useGameLogic(user: User | null) { // Accept user
+export function useGameLogic(user: User | null) { 
   const [gameState, setGameState] = useState<GameState>(() => {
     const initialHeatLevels: Record<string, number> = {};
     NYC_LOCATIONS.forEach(loc => initialHeatLevels[loc] = 0);
     return {
-      playerStats: createInitialPlayerStats(user), // Initialize with user
+      playerStats: createInitialPlayerStats(user), 
       marketPrices: [],
-      previousMarketPrices: [], // Store prices from day before for comparison
+      previousMarketPrices: [], 
       localHeadlines: [],
       eventLog: [],
       isLoadingNextDay: false,
@@ -88,7 +89,7 @@ export function useGameLogic(user: User | null) { // Accept user
       availableCapacityUpgrades: [],
       activeBoroughEvents: {},
       boroughHeatLevels: initialHeatLevels,
-      playerActivityInBoroughsThisDay: {}, // Track player deals in each borough for heat increase
+      playerActivityInBoroughsThisDay: {}, 
       isBattleActive: false,
       currentEnemy: null,
       battleLog: [],
@@ -104,7 +105,7 @@ export function useGameLogic(user: User | null) { // Accept user
     return () => { isMounted.current = false; };
   }, []);
 
-  // Update player name if user's displayName changes (e.g., after signup profile update)
+  
   useEffect(() => {
     if (user?.displayName && user.displayName !== gameState.playerStats.name) {
       setGameState(prev => ({
@@ -147,7 +148,7 @@ export function useGameLogic(user: User | null) { // Accept user
             }
           }
         } else if (!headline.affectedDrug && (!headline.affectedCategories || headline.affectedCategories.length === 0)) {
-          // General headline affecting all drugs if no specific drug/category
+          
           applyThisHeadline = true;
         }
 
@@ -160,17 +161,17 @@ export function useGameLogic(user: User | null) { // Accept user
   }, []);
 
   const fetchInitialData = useCallback(async () => {
-    // Only fetch if user is available
+    
     if (!user) {
-        if (isMounted.current) setGameState(prev => ({...prev, isLoadingMarket: false})); // Ensure loading stops if no user
+        if (isMounted.current) setGameState(prev => ({...prev, isLoadingMarket: false})); 
         return;
     }
     if (isMounted.current) setGameState(prev => ({ ...prev, isLoadingMarket: true }));
-    resetUniqueEvents(); // Reset unique events for a new game session
+    resetUniqueEvents(); 
 
     try {
       const initialPlayerStats = createInitialPlayerStats(user);
-      const rawDay0Prices = await getMarketPrices(initialPlayerStats.currentLocation, 0, gameState.boroughHeatLevels); // Pass heat for consistency
+      const rawDay0Prices = await getMarketPrices(initialPlayerStats.currentLocation, 0, gameState.boroughHeatLevels); 
       const [headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
         getLocalHeadlines(initialPlayerStats.currentLocation),
         getShopWeapons(),
@@ -239,16 +240,16 @@ export function useGameLogic(user: User | null) { // Accept user
         setGameState(prev => ({ ...prev, isLoadingMarket: false }));
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry, applyHeadlineImpacts, user]); 
+  
+  }, [toast, addLogEntry, applyHeadlineImpacts, user, gameState.boroughHeatLevels]); 
 
 
   useEffect(() => {
     if (user) { 
         fetchInitialData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); 
+  
+  }, [user, fetchInitialData]); 
 
 
   const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
@@ -524,66 +525,96 @@ export function useGameLogic(user: User | null) { // Accept user
 
   const travelToLocation = useCallback(async (targetLocation: string) => {
     if (!user) return;
-    const currentLoc = gameState.playerStats.currentLocation;
-    if (currentLoc === targetLocation) {
-      setTimeout(() => toast({ title: "Already There", description: `You are already in ${targetLocation}.` }), 0);
-      return;
-    }
-
-    const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
-    addLogEntry('travel', travelMessage);
-    setTimeout(() => toast({ title: "Travel Successful", description: travelMessage }), 0);
-
-    const previousPricesInOldLocation = [...gameState.marketPrices]; 
 
     if (isMounted.current) {
-        setGameState(prev => ({
-        ...prev,
-        playerStats: { ...prev.playerStats, currentLocation: targetLocation },
-        isLoadingMarket: true, 
-        localHeadlines: [], 
-        marketPrices: [], 
-        previousMarketPrices: previousPricesInOldLocation.map(({priceChangeDirection, ...rest}) => rest), 
-        }));
-    }
-
-    try {
-      const newRawPrices = await getMarketPrices(targetLocation, gameState.playerStats.daysPassed, gameState.boroughHeatLevels);
-      const newHeadlines = await getLocalHeadlines(targetLocation);
-
-      const currentActiveEvents = gameState.activeBoroughEvents; 
-
-      let finalPricesWithImpacts = applyHeadlineImpacts(newRawPrices, newHeadlines);
-      finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]); 
-
-      const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
-        const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
-        let direction: DrugPrice['priceChangeDirection'] = 'new';
-        if(baseDrug){ 
-            if(currentDrug.price === baseDrug.basePrice) direction = 'same';
-            else if (currentDrug.price > baseDrug.basePrice) direction = 'up';
-            else direction = 'down';
+      // Use setGameState with a callback to get the most recent state
+      setGameState(prev => {
+        const currentLoc = prev.playerStats.currentLocation;
+        if (currentLoc === targetLocation) {
+          setTimeout(() => toast({ title: "Already There", description: `You are already in ${targetLocation}.` }), 0);
+          return prev; // Return previous state, no changes
         }
-        return { ...currentDrug, priceChangeDirection: direction };
-      });
 
-      if (isMounted.current) {
-        setGameState(prev => ({
-            ...prev,
-            marketPrices: newMarketPricesWithDirection,
-            localHeadlines: newHeadlines,
-            isLoadingMarket: false 
-        }));
-      }
-      addLogEntry('info', `Market data for ${targetLocation} updated.`);
-    } catch (e) {
-      console.error("Market fetch error during travel:", e);
-      if (isMounted.current) {
-        setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
-        setGameState(prev => ({...prev, isLoadingMarket: false})); 
-      }
+        if (prev.playerStats.travelsThisDay >= 5) {
+          addLogEntry('info', `Travel limit of 5 reached for the day. Advancing to the next day.`);
+          setTimeout(() => toast({ title: "Travel Limit Reached", description: "Advancing to the next day." }), 0);
+          
+          // Directly call handleNextDay. It will manage its own state updates.
+          // No need to return a new state here if handleNextDay will take over.
+          // However, we need to ensure this setGameState call completes *before* handleNextDay might try to read stale state.
+          // To be safe, we set isLoadingNextDay and let handleNextDay run.
+          // The handleNextDay function should be robust enough to handle being called at this point.
+          Promise.resolve().then(() => handleNextDay()); // Schedule handleNextDay to run after current updates.
+
+          return { ...prev, isLoadingNextDay: true }; // Set loading for next day
+        }
+        
+        // Proceed with travel logic
+        const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
+        addLogEntry('travel', travelMessage);
+        setTimeout(() => toast({ title: "Travel Successful", description: travelMessage }), 0);
+
+        const previousPricesInOldLocation = [...prev.marketPrices];
+
+        // This part will update state for the travel itself
+        const newStateAfterTravelSetup = {
+          ...prev,
+          playerStats: { 
+            ...prev.playerStats, 
+            currentLocation: targetLocation,
+            travelsThisDay: prev.playerStats.travelsThisDay + 1, // Increment travel count
+          },
+          isLoadingMarket: true,
+          localHeadlines: [],
+          marketPrices: [],
+          previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest),
+        };
+        
+        // Fetch new market data after setting the new location
+        // This needs to be an async operation outside the main setGameState
+        (async () => {
+            try {
+                const newRawPrices = await getMarketPrices(targetLocation, newStateAfterTravelSetup.playerStats.daysPassed, newStateAfterTravelSetup.boroughHeatLevels);
+                const newHeadlines = await getLocalHeadlines(targetLocation);
+
+                const currentActiveEvents = newStateAfterTravelSetup.activeBoroughEvents;
+
+                let finalPricesWithImpacts = applyHeadlineImpacts(newRawPrices, newHeadlines);
+                finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]);
+
+                const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
+                const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
+                let direction: DrugPrice['priceChangeDirection'] = 'new';
+                if(baseDrug){
+                    if(currentDrug.price === baseDrug.basePrice) direction = 'same';
+                    else if (currentDrug.price > baseDrug.basePrice) direction = 'up';
+                    else direction = 'down';
+                }
+                return { ...currentDrug, priceChangeDirection: direction };
+                });
+
+                if (isMounted.current) {
+                    setGameState(s => ({ // Use functional update here for safety
+                        ...s,
+                        marketPrices: newMarketPricesWithDirection,
+                        localHeadlines: newHeadlines,
+                        isLoadingMarket: false
+                    }));
+                }
+                addLogEntry('info', `Market data for ${targetLocation} updated.`);
+            } catch (e) {
+                console.error("Market fetch error during travel:", e);
+                if (isMounted.current) {
+                    setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
+                    setGameState(s => ({...s, isLoadingMarket: false}));
+                }
+            }
+        })();
+
+        return newStateAfterTravelSetup; // Return the state updated for initiating travel
+      });
     }
-  }, [toast, addLogEntry, gameState, applyHeadlineImpacts, user]);
+  }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); // Added handleNextDay as a dependency
 
  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     if (!user || gameState.playerStats.daysPassed <= 10) { 
@@ -735,7 +766,7 @@ export function useGameLogic(user: User | null) { // Accept user
                     addBattleLog(`Bribe successful! ${newEnemyStats.name} takes the $${bribeCost.toLocaleString()} and leaves.`);
                     finalBattleMessage = "Bribe successful!";
                     battleEnded = true;
-                    // Optionally add small reputation change for successful bribe
+                    
                     newPlayerStats.reputation += (newEnemyStats.name === 'Beat Cop' ? -2 : 1);
                 } else {
                     addBattleLog(`Bribe failed! ${newEnemyStats.name} is not swayed.`);
@@ -767,7 +798,7 @@ export function useGameLogic(user: User | null) { // Accept user
 
         if (battleEnded) {
             if (finalBattleMessage) { 
-                // Flee or Bribe message already set
+                
             } else if (playerWon !== null) { 
             const battleResult = getBattleResultConsequences(playerWon, newEnemyStats, newPlayerStats);
 
@@ -828,6 +859,7 @@ export function useGameLogic(user: User | null) { // Accept user
 
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
+    currentStats.travelsThisDay = 0; // Reset travel count for the new day
 
     let workingHeatLevels = { ...gameState.boroughHeatLevels };
     NYC_LOCATIONS.forEach(borough => {

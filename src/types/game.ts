@@ -66,6 +66,7 @@ export interface PlayerStats {
   equippedArmor: Armor | null;
   purchasedUpgradeIds: string[];
   purchasedArmorIds: string[];
+  travelsThisDay: number; // Number of travels made in the current day
 }
 
 export interface EnemyStats {
@@ -100,7 +101,7 @@ export type LogEventType =
   | 'event_trigger'
   | 'event_player_impact'
   | 'battle_action'
-  | 'bribe_attempt' // New log type for bribe attempts
+  | 'bribe_attempt'
   | 'info';
 
 export interface LogEntry {
