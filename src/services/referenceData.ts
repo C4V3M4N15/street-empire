@@ -32,10 +32,11 @@ const drugCategoriesMap: Record<string, string> = {
 };
 
 // Initial mapping - description will be set by the forEach loop below using static text
+// Volatility will be taken directly from the imported marketAllDrugs
 export const ALL_DRUG_REFERENCE_DATA: DrugReference[] = marketAllDrugs.map(drug => ({
   name: drug.name,
   basePrice: drug.basePrice,
-  volatility: drug.volatility,
+  volatility: drug.volatility, // This will reflect the updated volatility from market.ts
   description: '', // Placeholder: will be filled with static description from drugDescriptions
   category: drugCategoriesMap[drug.name] || 'General Illicit',
 }));
