@@ -10,6 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { cn } from '@/lib/utils'; // Added import for cn
 
 interface PlayerStatsCardProps {
   playerStats: PlayerStats;
