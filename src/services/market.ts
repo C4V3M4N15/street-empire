@@ -50,7 +50,7 @@ export const ALL_DRUGS = [
   { name: 'Mushrooms', basePrice: 15, volatility: 0.16 },
   { name: 'LSD', basePrice: 25, volatility: 0.2 },
   { name: 'Meth', basePrice: 80, volatility: 0.28 }, // Was "Speed"
-  { name: 'Crack', basePrice: 25, volatility: 0.23 }, // Was "Hard"
+  { name: 'Crack', basePrice: 60, volatility: 0.35 }, // Was "Hard", updated basePrice to 60 and volatility to 0.35
   { name: 'Heroin', basePrice: 120, volatility: 0.22 }, // Was "Boi"
   { name: 'OxyContin', basePrice: 60, volatility: 0.22 }, // Was "Blues"
   { name: 'Dilaudid', basePrice: 180, volatility: 0.26 }, // New
@@ -111,7 +111,7 @@ export async function getMarketPrices(location: string, daysPassed: number, boro
 
   return selectedDrugs.map(drug => {
     // Base price fluctuation using Gaussian random
-    const priceFluctuation = gaussianRandom() * drug.volatility * 0.5;
+    const priceFluctuation = gaussianRandom() * (drug.volatility || 0.1) * 0.5; // Ensure volatility is defined
     let price = drug.basePrice * (1 + priceFluctuation);
 
     // Location-based price scaling

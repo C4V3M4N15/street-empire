@@ -44,7 +44,7 @@ const drugDescriptions: Record<string, Partial<DrugReference>> = {
   'Mushrooms': { description: 'Naturally occurring psychedelics. Effects can vary. Market can be niche but profitable.', category: 'Psychedelic (Organic)' },
   'LSD': { description: 'Potent synthetic psychedelic. Small doses, big effects. Market can be volatile.', category: 'Psychedelic (Synthetic, Potent)' },
   'Meth': { description: 'Powerful synthetic stimulant, known for its intense high and addictive properties. High risk, high reward.', category: 'Stimulant (Hard, Synthetic)' },
-  'Crack': { description: 'Smokable form of cocaine. Cheaper, intense but short high, highly addictive. Fast turnover.', category: 'Stimulant (Cheap, Addictive)' },
+  'Crack': { description: 'Smokable form of cocaine. Cheaper, intense but short high, highly addictive. Fast turnover. Base price now $60.', category: 'Stimulant (Cheap, Addictive)' },
   'Heroin': { description: 'Highly addictive opioid. Dangerous but can be very profitable due to dependency.', category: 'Opioid (Hard, Addictive)' },
   'OxyContin': { description: 'Powerful prescription opioid painkiller, often diverted to the black market. High street value.', category: 'Opioid (Prescription, Expensive)' },
   'Dilaudid': { description: 'Hydromorphone, an extremely potent prescription opioid. Very high risk and high value.', category: 'Opioid (Prescription, Very Potent)' },
@@ -54,6 +54,9 @@ ALL_DRUG_REFERENCE_DATA.forEach(drugRef => {
   if (drugDescriptions[drugRef.name]) {
     Object.assign(drugRef, drugDescriptions[drugRef.name]);
   }
+  // Ensure the generic description also reflects the updated base price from marketAllDrugs
+  drugRef.description = `A commonly traded illicit substance. Base price is around $${drugRef.basePrice}. Known for its ${drugRef.volatility ? (drugRef.volatility * 100).toFixed(0) : 'N/A'}% price volatility. ${drugDescriptions[drugRef.name]?.description || ''}`;
+
 });
 
 
