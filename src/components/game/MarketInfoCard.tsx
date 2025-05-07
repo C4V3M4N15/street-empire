@@ -184,7 +184,7 @@ export function MarketInfoCard({
                         <div className="py-1"> 
                           <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> 
                             <div className="col-span-1 sm:col-span-1">
-                              <p className={cn("text-sm font-medium truncate", priceChangeColor)} title={drug.drug}>
+                              <p className="text-sm font-medium truncate" title={drug.drug}> {/* Removed priceChangeColor from drug name */}
                                 {getPriceChangeIcon(drug.priceChangeDirection)}
                                 {drug.drug}
                               </p>
@@ -196,7 +196,7 @@ export function MarketInfoCard({
                                 </span>
                               </div>
                             </div>
-                            <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p>
+                            <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p> {/* Kept priceChangeColor for price */}
                             <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
                               <Input
                                 type="number"
