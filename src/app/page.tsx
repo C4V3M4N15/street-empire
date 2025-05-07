@@ -5,7 +5,7 @@ import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
 import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
 import { GameOverDialog } from '@/components/game/GameOverDialog';
-import { EventLogCard } from '@/components/game/EventLogCard'; // Import EventLogCard
+import { EventLogCard } from '@/components/game/EventLogCard';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -15,7 +15,7 @@ export default function StreetEmpirePage() {
     playerStats,
     marketPrices,
     localHeadlines,
-    eventLog, // Destructure eventLog
+    eventLog,
     isLoadingNextDay,
     isLoadingMarket,
     isGameOver,
@@ -23,6 +23,8 @@ export default function StreetEmpirePage() {
     sellDrug,
     handleNextDay,
     resetGame,
+    travelToLocation, // Add this
+    fetchHeadlinesForLocation, // Add this
   } = useGameLogic();
 
   if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) {
@@ -58,8 +60,10 @@ export default function StreetEmpirePage() {
             playerStats={playerStats}
             buyDrug={buyDrug}
             sellDrug={sellDrug}
+            travelToLocation={travelToLocation} // Pass down
+            fetchHeadlinesForLocation={fetchHeadlinesForLocation} // Pass down
           />
-           <EventLogCard eventLog={eventLog} /> {/* Add EventLogCard here */}
+           <EventLogCard eventLog={eventLog} />
         </div>
       </main>
       

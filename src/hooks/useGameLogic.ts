@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -174,6 +175,39 @@ export function useGameLogic() {
     });
   }, [toast, addLogEntry]);
 
+  const travelToLocation = useCallback((targetLocation: string) => {
+    if (gameState.playerStats.currentLocation === targetLocation) {
+        toast({ title: "Already There", description: `You are already in ${targetLocation}.`, variant: "default" });
+        return;
+    }
+    setGameState(prev => {
+        const travelMessage = `Traveled from ${prev.playerStats.currentLocation} to ${targetLocation}.`;
+        toast({ title: "Travel Successful", description: travelMessage });
+        addLogEntry('travel', travelMessage);
+        return {
+            ...prev,
+            playerStats: {
+                ...prev.playerStats,
+                currentLocation: targetLocation,
+            },
+            // Market data for the new location will be fetched on "Next Day"
+        };
+    });
+  }, [toast, addLogEntry, gameState.playerStats.currentLocation]);
+
+  const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
+    // This function is now primarily for the NycMap component to show potential headlines.
+    // The main market headlines (for playerStats.currentLocation) are fetched in handleNextDay or initial load.
+    try {
+      const headlines = await getLocalHeadlines(location);
+      return headlines;
+    } catch (error) {
+      console.error(`Failed to fetch headlines for ${location}:`, error);
+      toast({ title: "Headline Error", description: `Could not load headlines for ${location}.`, variant: "destructive" });
+      return [];
+    }
+  }, [toast]);
+
 
   const handleNextDay = useCallback(async () => {
     if (gameState.isGameOver) return;
@@ -184,17 +218,20 @@ export function useGameLogic() {
     currentStats.daysPassed += 1;
     addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}.`);
     
-    // Travel every 5 days
+    // Automatic travel every 5 days is removed to prefer manual travel.
+    // If you want to keep it, uncomment the following block:
+    /*
     if (currentStats.daysPassed > 0 && currentStats.daysPassed % 5 === 0) { 
         const currentLocationIndex = NYC_LOCATIONS.indexOf(currentStats.currentLocation);
         const nextLocationIndex = (currentLocationIndex + 1) % NYC_LOCATIONS.length;
         currentStats.currentLocation = NYC_LOCATIONS[nextLocationIndex];
-        const travelMsg = `You moved to ${currentStats.currentLocation}.`;
+        const travelMsg = `You automatically moved to ${currentStats.currentLocation}.`;
         toast({ title: "Travel Update", description: travelMsg });
         addLogEntry('travel', travelMsg);
     }
+    */
 
-    // Market Update for the current (potentially new) location
+    // Market Update for the current location
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -304,7 +341,6 @@ export function useGameLogic() {
       isGameOver: false,
       gameMessage: null,
     });
-    // Re-fetch initial market data for the new game, starting in INITIAL_PLAYER_STATS.currentLocation
     addLogEntry('info', 'Game reset.');
     fetchInitialMarketData(); 
   }, [fetchInitialMarketData, addLogEntry]);
@@ -322,5 +358,7 @@ export function useGameLogic() {
     sellDrug,
     handleNextDay,
     resetGame,
+    travelToLocation,
+    fetchHeadlinesForLocation,
   };
 }
