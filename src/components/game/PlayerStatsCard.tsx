@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { PlayerStats } from '@/types/game';
@@ -17,8 +16,8 @@ interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
 
-const PLAYER_BASE_DAMAGE = 5;
-const PLAYER_BASE_PROTECTION = 2;
+const PLAYER_BASE_ATTACK = 5; // Base damage with fists
+const PLAYER_BASE_PROTECTION = 2; // Base protection with no armor
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string; className?: string }> = ({ icon: Icon, label, value, iconColor, className }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-border/50 last:border-b-0", className)}>
@@ -39,8 +38,8 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
   const totalInventoryUnits = inventoryEntries.reduce((sum, [, item]) => sum + item.quantity, 0);
 
   const currentWeaponName = playerStats.equippedWeapon ? playerStats.equippedWeapon.name : 'Fists';
-  const weaponDamageBonus = playerStats.equippedWeapon?.damageBonus || 0;
-  const totalDamage = PLAYER_BASE_DAMAGE + weaponDamageBonus;
+  // Player's attack power is now directly the weapon's damageBonus, or PLAYER_BASE_ATTACK if unarmed.
+  const totalDamage = playerStats.equippedWeapon?.damageBonus || PLAYER_BASE_ATTACK;
 
   const currentArmorName = playerStats.equippedArmor ? playerStats.equippedArmor.name : 'None';
   const armorProtectionBonus = playerStats.equippedArmor?.protectionBonus || 0;
@@ -76,12 +75,12 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-0 pb-0 pl-1 pr-1">
-              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (+${weaponDamageBonus} DMG)`} iconColor="text-orange-500" className="border-t-0" />
+              <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (DMG: ${playerStats.equippedWeapon?.damageBonus || 0})`} iconColor="text-orange-500" className="border-t-0" />
               {playerStats.equippedWeapon?.isFirearm && (
                 <StatItem icon={Target} label="Ammo" value={ammoDisplay} iconColor="text-yellow-600" />
               )}
               <StatItem icon={Zap} label="Total Damage" value={totalDamage} iconColor="text-yellow-400" />
-              <StatItem icon={ShieldHalf} label="Armor" value={`${currentArmorName} (+${armorProtectionBonus} DEF)`} iconColor="text-blue-500" />
+              <StatItem icon={ShieldHalf} label="Armor" value={`${currentArmorName} (DEF: +${armorProtectionBonus})`} iconColor="text-blue-500" />
               <StatItem icon={Zap} label="Total Protection" value={totalProtection} iconColor="text-sky-400" />
               <StatItem icon={Star} label="Reputation" value={playerStats.reputation} iconColor="text-yellow-500" />
             </AccordionContent>
@@ -133,6 +132,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               <AccordionContent className="pt-0 pb-0 pl-3 pr-1">
                 {playerStats.purchasedUpgradeIds.map(upgradeId => (
                    <p key={upgradeId} className="text-xs py-1 border-b border-border/30 last:border-b-0">
+                     {/* Attempt to pretty-print upgrade ID */}
                      {upgradeId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                    </p>
                 ))}
