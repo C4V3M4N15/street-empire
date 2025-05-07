@@ -2,24 +2,27 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
+import type { Weapon } from '@/types/game'; // Import Weapon type
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store } from 'lucide-react';
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, Dices, ShieldPlus, Sword } from 'lucide-react';
 import type { PlayerStats } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { NycMap } from './NycMap'; // Import the new NycMap component
+import { NycMap } from './NycMap';
 
 interface MarketInfoCardProps {
   marketPrices: DrugPrice[];
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
+  availableWeapons: Weapon[]; // Add availableWeapons prop
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
+  buyWeapon: (weapon: Weapon) => void; // Add buyWeapon prop
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
@@ -45,8 +48,10 @@ export function MarketInfoCard({
   localHeadlines, 
   isLoading, 
   playerStats, 
+  availableWeapons,
   buyDrug, 
   sellDrug,
+  buyWeapon,
   travelToLocation,
   fetchHeadlinesForLocation
 }: MarketInfoCardProps) {
@@ -136,13 +141,10 @@ export function MarketInfoCard({
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
                       const costForBuy = currentQuantityInput * drug.price;
-                      // const valueForSell = currentQuantityInput * drug.price; // Not directly used for display here
-
                       const canBuy = playerStats.cash >= costForBuy && currentQuantityInput > 0;
                       const canSell = playerHoldings >= currentQuantityInput && currentQuantityInput > 0;
                       const currentTotalUnits = Object.values(playerStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
                       const canFit = currentTotalUnits + currentQuantityInput <= playerStats.maxInventoryCapacity;
-
 
                       return (
                         <React.Fragment key={drug.drug}>
@@ -232,18 +234,63 @@ export function MarketInfoCard({
         </TabsContent>
          <TabsContent value="shop">
           <CardContent className="p-4 pt-3">
-            <h3 className="text-md font-semibold mb-2 flex items-center">
-              <Store className="mr-2 h-4 w-4 text-accent" /> The Git'n Place ({playerStats.currentLocation})
+            <h3 className="text-md font-semibold mb-3 flex items-center">
+              <Store className="mr-2 h-4 w-4 text-accent" /> The Git'n Place 
             </h3>
-            <div className="min-h-[200px] flex items-center justify-center border-2 border-dashed border-border rounded-md">
-              <p className="text-sm text-muted-foreground">
-                Shop items (healing, weapons, armor, capacity upgrades) coming soon!
-              </p>
+            
+            {/* Weapons Section */}
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
+                <Sword className="mr-2 h-4 w-4 text-destructive" /> Weapons
+              </h4>
+              {availableWeapons.length > 0 ? (
+                <div className="space-y-2">
+                  {availableWeapons.map(weapon => (
+                    <div key={weapon.name} className="flex items-center justify-between p-2 border border-border/50 rounded-md">
+                      <div>
+                        <p className="text-sm font-medium">{weapon.name}</p>
+                        <p className="text-xs text-muted-foreground">DMG: +{weapon.damageBonus} | Cost: ${weapon.price.toLocaleString()}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => buyWeapon(weapon)}
+                        disabled={isLoading || playerStats.cash < weapon.price || (playerStats.equippedWeapon?.name === weapon.name)}
+                        className="text-xs"
+                      >
+                        {playerStats.equippedWeapon?.name === weapon.name ? 'Equipped' : 'Buy'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                 <p className="text-xs text-muted-foreground py-2">No weapons currently in stock.</p>
+              )}
             </div>
+            
+            <Separator className="my-4" />
+
+            {/* Healing Items Section - Placeholder */}
+            <div  className="mb-4">
+              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
+                <ShieldPlus className="mr-2 h-4 w-4 text-green-500" /> Healing & Armor
+              </h4>
+               <p className="text-xs text-muted-foreground py-2">Healing items and armor coming soon!</p>
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* Capacity Upgrades Section - Placeholder */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
+                <Dices className="mr-2 h-4 w-4 text-blue-500" /> Capacity Upgrades
+              </h4>
+              <p className="text-xs text-muted-foreground py-2">Storage capacity upgrades coming soon!</p>
+            </div>
+
           </CardContent>
         </TabsContent>
       </Tabs>
     </Card>
   );
 }
-

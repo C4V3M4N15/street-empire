@@ -2,13 +2,15 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem } from '@/types/game';
+import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon } from '@/types/game';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { simulateCombat, type CombatOutcome } from '@/services/combat';
+import { getShopWeapons } from '@/services/shopItems'; // Import shop items service
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
 
 const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
+const PLAYER_BASE_DAMAGE = 1; // Damage with fists
 
 const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
@@ -20,6 +22,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   currentLocation: NYC_LOCATIONS[0], // Start in Manhattan
   rank: 'Rookie',
   maxInventoryCapacity: 10, // Default carrying capacity
+  equippedWeapon: null, // Starts with fists (null weapon)
 };
 
 
@@ -33,6 +36,7 @@ export function useGameLogic() {
     isLoadingMarket: true,
     isGameOver: false,
     gameMessage: null,
+    availableWeapons: [], // Initialize available weapons
   });
 
   const { toast } = useToast();
@@ -44,30 +48,35 @@ export function useGameLogic() {
     }));
   }, []);
 
-  const fetchInitialMarketData = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
     try {
-      const prices = await getMarketPrices(INITIAL_PLAYER_STATS.currentLocation);
-      const headlines = await getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation);
+      const [prices, headlines, weapons] = await Promise.all([
+        getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
+        getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation),
+        getShopWeapons() // Fetch shop weapons
+      ]);
+      
       const adjustedPrices = applyHeadlineImpacts(prices, headlines);
       setGameState(prev => ({
         ...prev,
         marketPrices: adjustedPrices,
         localHeadlines: headlines,
+        availableWeapons: weapons, // Set available weapons
         isLoadingMarket: false,
       }));
-      addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market data loaded.`);
+      addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market and shop data loaded.`);
     } catch (error) {
-      console.error("Failed to fetch initial market data:", error);
-      toast({ title: "Error", description: "Could not load market data.", variant: "destructive" });
-      addLogEntry('info', 'Error loading initial market data.');
+      console.error("Failed to fetch initial game data:", error);
+      toast({ title: "Error", description: "Could not load game data.", variant: "destructive" });
+      addLogEntry('info', 'Error loading initial game data.');
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   }, [toast, addLogEntry]);
 
   useEffect(() => {
-    fetchInitialMarketData();
-  }, [fetchInitialMarketData]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const applyHeadlineImpacts = (prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
     if (!headlines.length) return prices;
@@ -182,6 +191,36 @@ export function useGameLogic() {
     });
   }, [toast, addLogEntry]);
 
+  const buyWeapon = useCallback((weaponToBuy: Weapon) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      if (currentStats.cash < weaponToBuy.price) {
+        toast({ title: "Not Enough Cash", description: `You need $${weaponToBuy.price.toLocaleString()} to buy the ${weaponToBuy.name}.`, variant: "destructive" });
+        return prev;
+      }
+
+      // Optional: Check if already equipped (to prevent re-buying same item immediately, or provide different feedback)
+      // if (currentStats.equippedWeapon && currentStats.equippedWeapon.name === weaponToBuy.name) {
+      //   toast({ title: "Already Equipped", description: `You already have the ${weaponToBuy.name}.`, variant: "default" });
+      //   return prev;
+      // }
+
+      const newCash = currentStats.cash - weaponToBuy.price;
+      const successMsg = `Purchased and equipped ${weaponToBuy.name} for $${weaponToBuy.price.toLocaleString()}.`;
+      toast({ title: "Weapon Acquired!", description: successMsg });
+      addLogEntry('shop_weapon_purchase', successMsg);
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          equippedWeapon: weaponToBuy,
+        }
+      };
+    });
+  }, [toast, addLogEntry]);
+
   const travelToLocation = useCallback((targetLocation: string) => {
     if (gameState.playerStats.currentLocation === targetLocation) {
         toast({ title: "Already There", description: `You are already in ${targetLocation}.`, variant: "default" });
@@ -203,8 +242,6 @@ export function useGameLogic() {
   }, [toast, addLogEntry, gameState.playerStats.currentLocation]);
 
   const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
-    // This function is now primarily for the NycMap component to show potential headlines.
-    // The main market headlines (for playerStats.currentLocation) are fetched in handleNextDay or initial load.
     try {
       const headlines = await getLocalHeadlines(location);
       return headlines;
@@ -225,19 +262,6 @@ export function useGameLogic() {
     currentStats.daysPassed += 1;
     addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}.`);
     
-    // Automatic travel every 5 days is removed to prefer manual travel.
-    // If you want to keep it, uncomment the following block:
-    /*
-    if (currentStats.daysPassed > 0 && currentStats.daysPassed % 5 === 0) { 
-        const currentLocationIndex = NYC_LOCATIONS.indexOf(currentStats.currentLocation);
-        const nextLocationIndex = (currentLocationIndex + 1) % NYC_LOCATIONS.length;
-        currentStats.currentLocation = NYC_LOCATIONS[nextLocationIndex];
-        const travelMsg = `You automatically moved to ${currentStats.currentLocation}.`;
-        toast({ title: "Travel Update", description: travelMsg });
-        addLogEntry('travel', travelMsg);
-    }
-    */
-
     // Market Update for the current location
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
@@ -261,7 +285,9 @@ export function useGameLogic() {
       addLogEntry('info', encounterMsg);
       
       try {
-        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats);
+        // Pass player base damage and weapon damage for combat simulation
+        const playerTotalDamage = PLAYER_BASE_DAMAGE + (currentStats.equippedWeapon?.damageBonus || 0);
+        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats); // Consider passing playerTotalDamage if simulateCombat uses it
         
         currentStats.health -= combatOutcome.healthLost;
         currentStats.cash += combatOutcome.cashChange;
@@ -347,22 +373,17 @@ export function useGameLogic() {
       isLoadingMarket: true, 
       isGameOver: false,
       gameMessage: null,
+      availableWeapons: [], // Reset weapons
     });
     addLogEntry('info', 'Game reset.');
-    fetchInitialMarketData(); 
-  }, [fetchInitialMarketData, addLogEntry]);
+    fetchInitialData(); 
+  }, [fetchInitialData, addLogEntry]);
 
   return {
-    ...gameState,
-    playerStats: gameState.playerStats,
-    marketPrices: gameState.marketPrices,
-    localHeadlines: gameState.localHeadlines,
-    eventLog: gameState.eventLog,
-    isLoadingNextDay: gameState.isLoadingNextDay,
-    isLoadingMarket: gameState.isLoadingMarket,
-    isGameOver: gameState.isGameOver,
+    ...gameState, // Spread all gameState properties
     buyDrug,
     sellDrug,
+    buyWeapon, // Expose buyWeapon
     handleNextDay,
     resetGame,
     travelToLocation,

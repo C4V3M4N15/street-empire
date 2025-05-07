@@ -15,16 +15,18 @@ export default function StreetEmpirePage() {
     playerStats,
     marketPrices,
     localHeadlines,
+    availableWeapons, // Add this
     eventLog,
     isLoadingNextDay,
     isLoadingMarket,
     isGameOver,
     buyDrug,
     sellDrug,
+    buyWeapon, // Add this
     handleNextDay,
     resetGame,
-    travelToLocation, // Add this
-    fetchHeadlinesForLocation, // Add this
+    travelToLocation,
+    fetchHeadlinesForLocation,
   } = useGameLogic();
 
   if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) {
@@ -56,12 +58,14 @@ export default function StreetEmpirePage() {
           <MarketInfoCard 
             marketPrices={marketPrices} 
             localHeadlines={localHeadlines} 
-            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0)}
+            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0)}
             playerStats={playerStats}
+            availableWeapons={availableWeapons} // Pass down
             buyDrug={buyDrug}
             sellDrug={sellDrug}
-            travelToLocation={travelToLocation} // Pass down
-            fetchHeadlinesForLocation={fetchHeadlinesForLocation} // Pass down
+            buyWeapon={buyWeapon} // Pass down
+            travelToLocation={travelToLocation}
+            fetchHeadlinesForLocation={fetchHeadlinesForLocation}
           />
            <EventLogCard eventLog={eventLog} />
         </div>

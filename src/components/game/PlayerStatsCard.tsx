@@ -3,7 +3,7 @@
 
 import type { PlayerStats } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag } from 'lucide-react';
+import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap } from 'lucide-react'; // Added Sword, Zap
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +14,8 @@ import {
 interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
+
+const PLAYER_BASE_DAMAGE = 1; // Base damage with fists
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string }> = ({ icon: Icon, label, value, iconColor }) => (
   <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-b-0">
@@ -30,6 +32,10 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
   const hasInventory = inventoryEntries.length > 0;
   const totalInventoryUnits = inventoryEntries.reduce((sum, [, item]) => sum + item.quantity, 0);
 
+  const currentWeaponName = playerStats.equippedWeapon ? playerStats.equippedWeapon.name : 'Fists';
+  const weaponDamageBonus = playerStats.equippedWeapon?.damageBonus || 0;
+  const totalDamage = PLAYER_BASE_DAMAGE + weaponDamageBonus;
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -40,12 +46,13 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
       <CardContent className="space-y-1">
         <StatItem icon={Heart} label="Health" value={playerStats.health} iconColor="text-red-500" />
         <StatItem icon={DollarSign} label="Cash" value={`$${playerStats.cash.toLocaleString()}`} />
+        <StatItem icon={Sword} label="Weapon" value={`${currentWeaponName} (+${weaponDamageBonus} DMG)`} iconColor="text-orange-500" />
+        <StatItem icon={Zap} label="Total Damage" value={totalDamage} iconColor="text-yellow-400" />
         <StatItem icon={Star} label="Reputation" value={playerStats.reputation} iconColor="text-yellow-500" />
         <StatItem icon={CalendarDays} label="Days Passed" value={playerStats.daysPassed} />
         <StatItem icon={MapPin} label="Location" value={playerStats.currentLocation} />
         <StatItem icon={Award} label="Rank" value={playerStats.rank} />
         <StatItem icon={ShoppingBag} label="Capacity" value={`${totalInventoryUnits.toLocaleString()} / ${playerStats.maxInventoryCapacity.toLocaleString()} units`} />
-
 
         {hasInventory && (
           <Accordion type="single" collapsible className="w-full pt-2">

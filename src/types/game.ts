@@ -15,6 +15,12 @@ export interface InventoryItem {
   totalCost: number; // Total amount spent to acquire this quantity
 }
 
+export interface Weapon {
+  name: string;
+  price: number;
+  damageBonus: number; // Damage added to base player damage (1 for fists)
+}
+
 export interface PlayerStats {
   name: string;
   health: number;
@@ -25,6 +31,7 @@ export interface PlayerStats {
   currentLocation: string;
   rank: PlayerRank;
   maxInventoryCapacity: number; // Maximum number of drug units player can carry
+  equippedWeapon: Weapon | null; // Player's current weapon, null for fists
 }
 
 export type LogEventType = 
@@ -36,6 +43,7 @@ export type LogEventType =
   | 'health_update' // More generic for health changes
   | 'rank_up'
   | 'game_over'
+  | 'shop_weapon_purchase' // New event type for buying weapons
   | 'info'; // General information
 
 export interface LogEntry {
@@ -54,4 +62,6 @@ export interface GameState {
   isLoadingMarket: boolean;
   isGameOver: boolean;
   gameMessage: string | null; 
+  availableWeapons: Weapon[]; // Weapons available in the shop
 }
+
