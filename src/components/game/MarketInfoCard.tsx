@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -148,8 +149,7 @@ export function MarketInfoCard({
                 </TabsTrigger>
             </TabsList>
         </CardHeader>
-        <TabsContent value="market">
-          <CardContent className="p-4 pt-3 min-h-[calc(100vh-28rem)]"> {/* Applied min-height */}
+        <TabsContent value="market" className="p-4 pt-3"> {/* Removed min-height */}
             {(isLoading && marketPrices.length === 0) ? (
               renderSkeletons()
             ) : (
@@ -273,8 +273,7 @@ export function MarketInfoCard({
 
               </div>
             )}
-          </CardContent>
-        </TabsContent>
+          </TabsContent>
         <TabsContent value="travel">
           <CardContent className="p-4 pt-3">
             <NycMap
