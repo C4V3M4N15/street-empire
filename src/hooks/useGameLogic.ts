@@ -2,15 +2,16 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon } from '@/types/game';
+import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon, Armor } from '@/types/game';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { simulateCombat, type CombatOutcome } from '@/services/combat';
-import { getShopWeapons } from '@/services/shopItems'; // Import shop items service
+import { getShopWeapons, getShopArmor } from '@/services/shopItems'; // Import shop items service
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
 
 const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
 const PLAYER_BASE_DAMAGE = 1; // Damage with fists
+const PLAYER_BASE_PROTECTION = 0; // Base protection without armor
 
 const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
@@ -23,6 +24,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   rank: 'Rookie',
   maxInventoryCapacity: 10, // Default carrying capacity
   equippedWeapon: null, // Starts with fists (null weapon)
+  equippedArmor: null, // Starts with no armor
 };
 
 
@@ -37,6 +39,7 @@ export function useGameLogic() {
     isGameOver: false,
     gameMessage: null,
     availableWeapons: [], // Initialize available weapons
+    availableArmor: [], // Initialize available armor
   });
 
   const { toast } = useToast();
@@ -51,10 +54,11 @@ export function useGameLogic() {
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
     try {
-      const [prices, headlines, weapons] = await Promise.all([
+      const [prices, headlines, weapons, armor] = await Promise.all([
         getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
         getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation),
-        getShopWeapons() // Fetch shop weapons
+        getShopWeapons(), // Fetch shop weapons
+        getShopArmor(), // Fetch shop armor
       ]);
       
       const adjustedPrices = applyHeadlineImpacts(prices, headlines);
@@ -62,7 +66,8 @@ export function useGameLogic() {
         ...prev,
         marketPrices: adjustedPrices,
         localHeadlines: headlines,
-        availableWeapons: weapons, // Set available weapons
+        availableWeapons: weapons, 
+        availableArmor: armor,
         isLoadingMarket: false,
       }));
       addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market and shop data loaded.`);
@@ -198,12 +203,11 @@ export function useGameLogic() {
         toast({ title: "Not Enough Cash", description: `You need $${weaponToBuy.price.toLocaleString()} to buy the ${weaponToBuy.name}.`, variant: "destructive" });
         return prev;
       }
-
-      // Optional: Check if already equipped (to prevent re-buying same item immediately, or provide different feedback)
-      // if (currentStats.equippedWeapon && currentStats.equippedWeapon.name === weaponToBuy.name) {
-      //   toast({ title: "Already Equipped", description: `You already have the ${weaponToBuy.name}.`, variant: "default" });
-      //   return prev;
-      // }
+      
+      if (currentStats.equippedWeapon?.name === weaponToBuy.name) {
+        toast({ title: "Already Equipped", description: `You already have the ${weaponToBuy.name} equipped.`, variant: "default" });
+        return prev;
+      }
 
       const newCash = currentStats.cash - weaponToBuy.price;
       const successMsg = `Purchased and equipped ${weaponToBuy.name} for $${weaponToBuy.price.toLocaleString()}.`;
@@ -216,6 +220,35 @@ export function useGameLogic() {
           ...currentStats,
           cash: newCash,
           equippedWeapon: weaponToBuy,
+        }
+      };
+    });
+  }, [toast, addLogEntry]);
+
+  const buyArmor = useCallback((armorToBuy: Armor) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      if (currentStats.cash < armorToBuy.price) {
+        toast({ title: "Not Enough Cash", description: `You need $${armorToBuy.price.toLocaleString()} to buy the ${armorToBuy.name}.`, variant: "destructive" });
+        return prev;
+      }
+
+      if (currentStats.equippedArmor?.name === armorToBuy.name) {
+        toast({ title: "Already Equipped", description: `You already have the ${armorToBuy.name} equipped.`, variant: "default" });
+        return prev;
+      }
+
+      const newCash = currentStats.cash - armorToBuy.price;
+      const successMsg = `Purchased and equipped ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection: +${armorToBuy.protectionBonus}.`;
+      toast({ title: "Armor Acquired!", description: successMsg });
+      addLogEntry('shop_armor_purchase', successMsg);
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          equippedArmor: armorToBuy,
         }
       };
     });
@@ -287,9 +320,16 @@ export function useGameLogic() {
       try {
         // Pass player base damage and weapon damage for combat simulation
         const playerTotalDamage = PLAYER_BASE_DAMAGE + (currentStats.equippedWeapon?.damageBonus || 0);
-        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats); // Consider passing playerTotalDamage if simulateCombat uses it
+        // Note: Player's protection from armor is implicitly handled if `simulateCombat` uses playerStats, or it can be passed explicitly.
+        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats); 
         
-        currentStats.health -= combatOutcome.healthLost;
+        // Apply damage reduction from armor if combat service doesn't handle it
+        let actualHealthLost = combatOutcome.healthLost;
+        if (currentStats.equippedArmor) {
+            actualHealthLost = Math.max(0, combatOutcome.healthLost - currentStats.equippedArmor.protectionBonus);
+        }
+        
+        currentStats.health -= actualHealthLost;
         currentStats.cash += combatOutcome.cashChange;
         currentStats.reputation += combatOutcome.reputationChange;
 
@@ -304,8 +344,8 @@ export function useGameLogic() {
         });
         
         addLogEntry(combatOutcome.playerWins ? 'combat_win' : 'combat_loss', combatOutcome.narration);
-        if (combatOutcome.healthLost > 0) {
-          addLogEntry('health_update', `Lost ${combatOutcome.healthLost} health.`);
+        if (actualHealthLost > 0) {
+          addLogEntry('health_update', `Lost ${actualHealthLost} health. ${currentStats.equippedArmor ? `(Reduced by ${currentStats.equippedArmor.protectionBonus} from armor)` : ''}`);
         }
         if (combatOutcome.cashChange !== 0) {
           addLogEntry('info', `${combatOutcome.cashChange > 0 ? 'Gained' : 'Lost'} $${Math.abs(combatOutcome.cashChange).toLocaleString()}.`);
@@ -373,17 +413,19 @@ export function useGameLogic() {
       isLoadingMarket: true, 
       isGameOver: false,
       gameMessage: null,
-      availableWeapons: [], // Reset weapons
+      availableWeapons: [], 
+      availableArmor: [], // Reset armor
     });
     addLogEntry('info', 'Game reset.');
     fetchInitialData(); 
   }, [fetchInitialData, addLogEntry]);
 
   return {
-    ...gameState, // Spread all gameState properties
+    ...gameState, 
     buyDrug,
     sellDrug,
-    buyWeapon, // Expose buyWeapon
+    buyWeapon,
+    buyArmor, // Expose buyArmor
     handleNextDay,
     resetGame,
     travelToLocation,

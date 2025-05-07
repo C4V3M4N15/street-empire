@@ -21,6 +21,12 @@ export interface Weapon {
   damageBonus: number; // Damage added to base player damage (1 for fists)
 }
 
+export interface Armor {
+  name: string;
+  price: number;
+  protectionBonus: number; // Represents damage reduction or protection points
+}
+
 export interface PlayerStats {
   name: string;
   health: number;
@@ -32,6 +38,7 @@ export interface PlayerStats {
   rank: PlayerRank;
   maxInventoryCapacity: number; // Maximum number of drug units player can carry
   equippedWeapon: Weapon | null; // Player's current weapon, null for fists
+  equippedArmor: Armor | null; // Player's current armor, null for no armor
 }
 
 export type LogEventType = 
@@ -43,7 +50,8 @@ export type LogEventType =
   | 'health_update' // More generic for health changes
   | 'rank_up'
   | 'game_over'
-  | 'shop_weapon_purchase' // New event type for buying weapons
+  | 'shop_weapon_purchase'
+  | 'shop_armor_purchase' // New event type for buying armor
   | 'info'; // General information
 
 export interface LogEntry {
@@ -63,5 +71,6 @@ export interface GameState {
   isGameOver: boolean;
   gameMessage: string | null; 
   availableWeapons: Weapon[]; // Weapons available in the shop
+  availableArmor: Armor[]; // Armor available in the shop
 }
 

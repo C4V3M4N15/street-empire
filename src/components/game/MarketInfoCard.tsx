@@ -2,12 +2,12 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
-import type { Weapon } from '@/types/game'; // Import Weapon type
+import type { Weapon, Armor } from '@/types/game'; // Import Armor type
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, Dices, ShieldPlus, Sword } from 'lucide-react';
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, Dices, ShieldPlus, Sword, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for armor
 import type { PlayerStats } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -19,10 +19,12 @@ interface MarketInfoCardProps {
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
-  availableWeapons: Weapon[]; // Add availableWeapons prop
+  availableWeapons: Weapon[]; 
+  availableArmor: Armor[]; // Add availableArmor prop
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
-  buyWeapon: (weapon: Weapon) => void; // Add buyWeapon prop
+  buyWeapon: (weapon: Weapon) => void;
+  buyArmor: (armor: Armor) => void; // Add buyArmor prop
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
@@ -49,9 +51,11 @@ export function MarketInfoCard({
   isLoading, 
   playerStats, 
   availableWeapons,
+  availableArmor,
   buyDrug, 
   sellDrug,
   buyWeapon,
+  buyArmor,
   travelToLocation,
   fetchHeadlinesForLocation
 }: MarketInfoCardProps) {
@@ -270,20 +274,52 @@ export function MarketInfoCard({
             
             <Separator className="my-4" />
 
-            {/* Healing Items Section - Placeholder */}
-            <div  className="mb-4">
+            {/* Armor Section */}
+            <div className="mb-4">
               <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <ShieldPlus className="mr-2 h-4 w-4 text-green-500" /> Healing & Armor
+                <ShieldCheck className="mr-2 h-4 w-4 text-blue-500" /> Armor
               </h4>
-               <p className="text-xs text-muted-foreground py-2">Healing items and armor coming soon!</p>
+              {availableArmor.length > 0 ? (
+                <div className="space-y-2">
+                  {availableArmor.map(armor => (
+                    <div key={armor.name} className="flex items-center justify-between p-2 border border-border/50 rounded-md">
+                      <div>
+                        <p className="text-sm font-medium">{armor.name}</p>
+                        <p className="text-xs text-muted-foreground">DEF: +{armor.protectionBonus} | Cost: ${armor.price.toLocaleString()}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => buyArmor(armor)}
+                        disabled={isLoading || playerStats.cash < armor.price || (playerStats.equippedArmor?.name === armor.name)}
+                        className="text-xs"
+                      >
+                        {playerStats.equippedArmor?.name === armor.name ? 'Equipped' : 'Buy'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                 <p className="text-xs text-muted-foreground py-2">No armor currently in stock.</p>
+              )}
             </div>
 
             <Separator className="my-4" />
 
+            {/* Healing Items Section - Placeholder */}
+            <div  className="mb-4">
+              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
+                <ShieldPlus className="mr-2 h-4 w-4 text-green-500" /> Healing Items
+              </h4>
+               <p className="text-xs text-muted-foreground py-2">Healing items coming soon!</p>
+            </div>
+
+            <Separator className="my-4" />
+            
             {/* Capacity Upgrades Section - Placeholder */}
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <Dices className="mr-2 h-4 w-4 text-blue-500" /> Capacity Upgrades
+                <Dices className="mr-2 h-4 w-4 text-purple-500" /> Capacity Upgrades
               </h4>
               <p className="text-xs text-muted-foreground py-2">Storage capacity upgrades coming soon!</p>
             </div>

@@ -4,7 +4,7 @@
 import type { LogEntry, LogEventType } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookText, ShoppingCart, Coins, Plane, ShieldAlert, ShieldCheck, HeartPulse, Award, Info, AlertCircle, Sword } from 'lucide-react'; // Added Sword
+import { BookText, ShoppingCart, Coins, Plane, ShieldAlert, ShieldCheck, HeartPulse, Award, Info, AlertCircle, Sword, ShieldHalf } from 'lucide-react'; // Added Sword, ShieldHalf
 import { format, parseISO } from 'date-fns';
 
 interface EventLogCardProps {
@@ -22,6 +22,7 @@ const getIconForType = (type: LogEventType) => {
     case 'rank_up': return <Award className="h-4 w-4 text-yellow-500" />;
     case 'game_over': return <AlertCircle className="h-4 w-4 text-red-700" />;
     case 'shop_weapon_purchase': return <Sword className="h-4 w-4 text-orange-500" />;
+    case 'shop_armor_purchase': return <ShieldHalf className="h-4 w-4 text-blue-600" />; // Added icon for armor
     case 'info':
     default: return <Info className="h-4 w-4 text-gray-500" />;
   }
