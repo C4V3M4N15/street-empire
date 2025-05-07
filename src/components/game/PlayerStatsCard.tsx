@@ -1,9 +1,8 @@
-
 "use client";
 
 import type { PlayerStats } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck } from 'lucide-react';
+import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck, PackagePlus } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -16,8 +15,8 @@ interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
 
-const PLAYER_BASE_DAMAGE = 1; // Base damage with fists
-const PLAYER_BASE_PROTECTION = 0; // Base protection with no armor
+const PLAYER_BASE_DAMAGE = 5; // Effective base damage (e.g. fists)
+const PLAYER_BASE_PROTECTION = 2; // Effective base protection (e.g. unarmored)
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string; className?: string }> = ({ icon: Icon, label, value, iconColor, className }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-border/50 last:border-b-0", className)}>
