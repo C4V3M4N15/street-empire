@@ -2,14 +2,14 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import type { LocalHeadline } from '@/services/market';
+import type { GameEvent } from '@/types/events';
 import { Loader2, TrendingUp, AlertTriangle, Pin, CheckCircle, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NycMapProps {
   currentLocation: string;
   onTravel: (location: string) => void;
-  fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
+  dailyEvents: Record<string, GameEvent | null>;
   isLoading: boolean;
 }
 
@@ -53,34 +53,32 @@ const boroughs = [
   },
 ];
 
-const HeadlineItem: React.FC<{ headline: LocalHeadline }> = ({ headline }) => {
-    const impactColor = headline.priceImpact > 0 ? 'text-accent' : headline.priceImpact < 0 ? 'text-destructive' : 'text-muted-foreground';
-    const ImpactIcon = headline.priceImpact > 0 ? TrendingUp : headline.priceImpact < 0 ? AlertTriangle : TrendingUp;
+const HeadlineItem: React.FC<{ event: GameEvent }> = ({ event }) => {
+    const impactColor = event.effects?.priceModifier ? 'text-accent' : event.effects?.categoryPriceModifiers ? 'text-destructive' : 'text-muted-foreground';
+    const ImpactIcon = event.effects?.priceModifier ? TrendingUp : event.effects?.categoryPriceModifiers ? AlertTriangle : TrendingUp;
     return (
       <div className="flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0 text-xs">
         <ImpactIcon className={`h-3 w-3 mt-0.5 shrink-0 ${impactColor}`} />
         <div>
-          <p>{headline.headline}</p>
-          <p className={`font-medium ${impactColor}`}>
-            Impact: {headline.priceImpact > 0 ? '+' : ''}{(headline.priceImpact * 100).toFixed(0)}%
-          </p>
+          <p>{event.name}</p>
+          <p className={`text-[0.7rem] text-muted-foreground`}>{event.text}</p>
         </div>
       </div>
     );
   };
 
-export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, isLoading: isGameLoading }: NycMapProps) {
+export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGameLoading }: NycMapProps) {
   const [hoveredBorough, setHoveredBorough] = useState<string | null>(null);
-  const [headlines, setHeadlines] = useState<LocalHeadline[]>([]);
-  const [isLoadingHeadlines, setIsLoadingHeadlines] = useState(false);
+
+  const handleTravelClick = (boroughName: string) => {
+    if (boroughName !== currentLocation && !isGameLoading) {
+      onTravel(boroughName);
+    }
+  };
 
   const handleMouseEnter = useCallback(async (boroughName: string) => {
     setHoveredBorough(boroughName);
-    if (boroughName === currentLocation) {
-        setHeadlines([]); 
-        return;
-    }
-    setIsLoadingHeadlines(true);
+    /*
     try {
       const fetchedHeadlines = await fetchHeadlinesForLocation(boroughName);
       setHeadlines(fetchedHeadlines);
@@ -90,17 +88,11 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
     } finally {
       setIsLoadingHeadlines(false);
     }
-  }, [fetchHeadlinesForLocation, currentLocation]);
+    */
+  }, []);
 
   const handleMouseLeave = () => {
     setHoveredBorough(null);
-    setHeadlines([]);
-  };
-
-  const handleTravelClick = (boroughName: string) => {
-    if (boroughName !== currentLocation && !isGameLoading) {
-      onTravel(boroughName);
-    }
   };
 
   return (
@@ -174,25 +166,23 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
         <h4 className="text-sm font-semibold mb-2 text-primary-foreground">
           {hoveredBorough ? `Headlines in ${hoveredBorough}:` : 'Hover over a borough to see headlines'}
         </h4>
-        {isLoadingHeadlines ? (
+        {isGameLoading ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-6 w-6 animate-spin text-accent" />
-            <span className="ml-2 text-sm">Loading headlines...</span>
+            <span className="ml-2 text-sm">Loading game day...</span>
           </div>
-        ) : headlines.length > 0 ? (
+        ) : hoveredBorough && dailyEvents[hoveredBorough] ? (
           <div className="max-h-24 overflow-y-auto pr-2 space-y-1">
-            {headlines.map((headline, index) => (
-              <HeadlineItem key={index} headline={headline} />
-            ))}
+            <HeadlineItem event={dailyEvents[hoveredBorough]!} />
           </div>
         ) : hoveredBorough && hoveredBorough !== currentLocation ? (
-          <p className="text-xs text-muted-foreground pt-2">No specific headlines for {hoveredBorough} right now.</p>
+          <p className="text-xs text-muted-foreground pt-2">Nothing major in {hoveredBorough} today.</p>
         ) : hoveredBorough && hoveredBorough === currentLocation ? (
              <div className="flex items-center text-sm text-accent pt-2">
                 <CheckCircle className="h-4 w-4 mr-2"/> You are currently in {currentLocation}.
              </div>
         ) : (
-          <p className="text-xs text-muted-foreground pt-2">Travel to a new borough to expand your empire.</p>
+          <p className="text-xs text-muted-foreground pt-2">Travel to a new borough to expand your empire, or to see todays events.</p>
         )}
       </div>
     </div>

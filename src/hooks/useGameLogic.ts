@@ -40,6 +40,11 @@ const createInitialPlayerStats = (user: User | null): PlayerStats => ({
   purchasedArmorIds: [],
 });
 
+interface DrugPriceWithLocation extends DrugPrice {
+  location: string;
+}
+});
+
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
   if (!event || !event.effects) return prices;
@@ -932,16 +937,23 @@ export function useGameLogic(user: User | null) { // Accept user
       newLocalHeadlines = await getLocalHeadlines(currentStats.currentLocation);
       let impactedPrices = applyHeadlineImpacts(rawNewMarketPrices, newLocalHeadlines);
       impactedPrices = applyEventPriceModifiers(impactedPrices, newDailyEvents[currentStats.currentLocation]);
+        
+        const pricesWithLocation = rawNewMarketPrices.map((price, index): DrugPriceWithLocation => ({
+            ...price,
+            location: NYC_LOCATIONS[index % NYC_LOCATIONS.length],
+        }))
 
-      currentMarketPrices = impactedPrices.map(currentDrug => {
+        currentMarketPrices = pricesWithLocation.map((currentDrug) => {
+        const eventInLocation = newDailyEvents[currentDrug.location]
+        const updatedPriceFromEvent = applyEventPriceModifiers([currentDrug], eventInLocation)[0]
         const prevDrug = gameState.previousMarketPrices.find(p => p.drug === currentDrug.drug);
         let direction: DrugPrice['priceChangeDirection'] = 'new'; 
         if (prevDrug) {
-          if (currentDrug.price > prevDrug.price) direction = 'up';
-          else if (currentDrug.price < prevDrug.price) direction = 'down';
+          if (updatedPriceFromEvent.price > prevDrug.price) direction = 'up';
+          else if (updatedPriceFromEvent.price < prevDrug.price) direction = 'down';
           else direction = 'same';
         }
-        return { ...currentDrug, priceChangeDirection: direction };
+        return { ...updatedPriceFromEvent, priceChangeDirection: direction };
       });
 
     } catch (e) {
