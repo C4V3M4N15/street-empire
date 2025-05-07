@@ -1024,3 +1024,4 @@ export function useGameLogic(user: User | null) { // Accept user
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+

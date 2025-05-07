@@ -144,3 +144,4 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     </Card>
   );
 }
+

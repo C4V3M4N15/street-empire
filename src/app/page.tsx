@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext'; // Added
 import { useRouter } from 'next/navigation'; // Added
 import Link from 'next/link'; // Added
+import { auth } from '@/lib/firebase/firebase'; // Import auth for signout
 
 export default function StreetEmpirePage() {
   const { user, loading: authLoading } = useAuth(); // Added
@@ -106,7 +107,7 @@ export default function StreetEmpirePage() {
           </h1>
           {user && (
             <Button variant="outline" size="sm" onClick={async () => {
-              await auth.signOut();
+              await auth.signOut(); // Use auth.signOut()
               router.push('/login');
             }}>
               Logout
@@ -170,3 +171,4 @@ export default function StreetEmpirePage() {
     </div>
   );
 }
+

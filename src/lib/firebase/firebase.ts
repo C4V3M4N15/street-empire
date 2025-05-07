@@ -30,3 +30,4 @@ authInstance = getAuth(app);
 // storage = getStorage(app);
 
 export { app, authInstance as auth /*, db, storage */ };
+
