@@ -160,463 +160,7 @@ export function useGameLogic(user: User | null) {
     });
   }, []);
 
-  const fetchInitialData = useCallback(async () => {
-    
-    if (!user) {
-        if (isMounted.current) setGameState(prev => ({...prev, isLoadingMarket: false})); 
-        return;
-    }
-    if (isMounted.current) setGameState(prev => ({ ...prev, isLoadingMarket: true }));
-    resetUniqueEvents(); 
-
-    try {
-      const initialPlayerStats = createInitialPlayerStats(user);
-      const rawDay0Prices = await getMarketPrices(initialPlayerStats.currentLocation, 0, gameState.boroughHeatLevels); 
-      const [headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
-        getLocalHeadlines(initialPlayerStats.currentLocation),
-        getShopWeapons(),
-        getShopArmor(),
-        getShopHealingItems(),
-        getShopCapacityUpgrades(),
-        getTodaysEvents(initialPlayerStats.daysPassed, gameState.boroughHeatLevels),
-      ]);
-
-      let finalDay0PricesWithImpacts = applyHeadlineImpacts(rawDay0Prices, headlines);
-      const eventInPlayerLocation = dailyEvents[initialPlayerStats.currentLocation];
-      finalDay0PricesWithImpacts = applyEventPriceModifiers(finalDay0PricesWithImpacts, eventInPlayerLocation);
-      
-      const fictionalDayMinus1Prices = ALL_DRUGS.map(d => ({
-        drug: d.name,
-        price: d.basePrice, 
-        volatility: d.volatility, 
-      }));
-
-      const day0MarketPricesWithDirection = finalDay0PricesWithImpacts.map(currentDrug => {
-        const prevDrug = fictionalDayMinus1Prices.find(p => p.drug === currentDrug.drug);
-        let direction: DrugPrice['priceChangeDirection'] = 'new'; 
-        if (prevDrug) {
-          if (currentDrug.price > prevDrug.price) direction = 'up';
-          else if (currentDrug.price < prevDrug.price) direction = 'down';
-          else direction = 'same';
-        }
-        return { ...currentDrug, priceChangeDirection: direction };
-      });
-
-
-      const initialBoroughHeat = { ...gameState.boroughHeatLevels };
-      for (const borough in dailyEvents) {
-        const event = dailyEvents[borough];
-        if (event?.effects.heatChange) {
-          initialBoroughHeat[borough] = Math.max(0, Math.min(5, (initialBoroughHeat[borough] || 0) + event.effects.heatChange));
-        }
-         if (event && isMounted.current) { 
-          const durationText = event.durationInDays && event.durationInDays > 1 ? ` (lasts ${event.durationInDays} days)` : '';
-          addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
-        }
-      }
-      
-      if (isMounted.current) {
-        setGameState(prev => ({
-          ...prev,
-          playerStats: initialPlayerStats, 
-          marketPrices: day0MarketPricesWithDirection,
-          previousMarketPrices: finalDay0PricesWithImpacts.map(({priceChangeDirection, ...rest}) => rest), 
-          localHeadlines: headlines,
-          availableWeapons: weapons,
-          availableArmor: armor,
-          availableHealingItems: healingItems,
-          availableCapacityUpgrades: capacityUpgrades,
-          activeBoroughEvents: dailyEvents,
-          boroughHeatLevels: initialBoroughHeat,
-          isLoadingMarket: false,
-        }));
-        addLogEntry('info', `Game started in ${initialPlayerStats.currentLocation}. Market, shop, and events loaded.`);
-      }
-    } catch (error) {
-      console.error("Failed to fetch initial game data:", error);
-      if (isMounted.current) {
-        setTimeout(() => toast({ title: "Error", description: "Could not load game data. Try refreshing.", variant: "destructive" }), 0);
-        addLogEntry('info', 'Error loading initial game data.');
-        setGameState(prev => ({ ...prev, isLoadingMarket: false }));
-      }
-    }
-  
-  }, [toast, addLogEntry, applyHeadlineImpacts, user, gameState.boroughHeatLevels]); 
-
-
-  useEffect(() => {
-    if (user) { 
-        fetchInitialData();
-    }
-  
-  }, [user, fetchInitialData]); 
-
-
-  const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
-    if (!user) return; 
-    if (isMounted.current) {
-        setGameState(prev => {
-        const currentStats = prev.playerStats;
-        const cost = quantity * price;
-        if (quantity <= 0) {
-            setTimeout(() => toast({ title: "Invalid Quantity", description: "Please enter a positive amount to buy.", variant: "destructive" }), 0);
-            return prev;
-        }
-        if (currentStats.cash < cost) {
-            setTimeout(() => toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" }), 0);
-            return prev;
-        }
-        const currentTotalUnits = Object.values(currentStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
-        if (currentTotalUnits + quantity > currentStats.maxInventoryCapacity) {
-            setTimeout(() => toast({ title: "Not Enough Space", description: `You can only carry ${currentStats.maxInventoryCapacity - currentTotalUnits} more units.`, variant: "destructive" }), 0);
-            return prev;
-        }
-        const newInventory = { ...currentStats.inventory };
-        const currentItem: InventoryItem = newInventory[drugName] || { quantity: 0, totalCost: 0 };
-        newInventory[drugName] = { quantity: currentItem.quantity + quantity, totalCost: currentItem.totalCost + cost };
-        const successMsg = `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.`;
-        setTimeout(() => toast({ title: "Purchase Successful", description: successMsg }), 0);
-        addLogEntry('buy', successMsg);
-        const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
-        return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash - cost, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-  const sellDrug = useCallback((drugName: string, quantity: number, price: number) => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const currentStats = prev.playerStats;
-        const currentItem = currentStats.inventory[drugName];
-        if (quantity <= 0) {
-            setTimeout(() => toast({ title: "Invalid Quantity", description: "Please enter a positive amount.", variant: "destructive" }), 0);
-            return prev;
-        }
-        if (!currentItem || currentItem.quantity < quantity) {
-            setTimeout(() => toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }), 0);
-            return prev;
-        }
-
-        const earnings = quantity * price;
-        const newInventory = { ...currentStats.inventory };
-
-        const avgCostPerUnit = currentItem.quantity > 0 ? (currentItem.totalCost / currentItem.quantity) : 0;
-        const costOfGoodsSold = avgCostPerUnit * quantity;
-
-        const newQuantity = currentItem.quantity - quantity;
-
-        if (newQuantity > 0) {
-            newInventory[drugName] = {
-            quantity: newQuantity,
-            totalCost: Math.max(0, currentItem.totalCost - costOfGoodsSold)
-            };
-        } else {
-            delete newInventory[drugName];
-        }
-        const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
-        setTimeout(() => toast({ title: "Sale Successful", description: successMsg }), 0);
-        addLogEntry('sell', successMsg);
-        const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
-        return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash + earnings, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-  const buyWeapon = useCallback((weaponToBuy: Weapon) => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const cs = prev.playerStats;
-        if (cs.cash < weaponToBuy.price) {
-            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
-            return prev;
-        }
-        if (cs.equippedWeapon?.name === weaponToBuy.name) {
-            setTimeout(() => toast({ title: "Already Equipped" }), 0);
-            return prev;
-        }
-
-        let newEquippedWeaponAmmo: PlayerStats['equippedWeaponAmmo'] = null;
-        if (weaponToBuy.isFirearm && weaponToBuy.clipSize && weaponToBuy.clipSize > 0) {
-            newEquippedWeaponAmmo = {
-            currentInClip: weaponToBuy.clipSize, 
-            reserveAmmo: weaponToBuy.clipSize * 2, 
-            };
-        }
-
-        const msg = `Purchased ${weaponToBuy.name} for $${weaponToBuy.price.toLocaleString()}.`;
-        setTimeout(() => toast({ title: "Weapon Acquired!", description: msg }), 0);
-        addLogEntry('shop_weapon_purchase', msg);
-        return { ...prev, playerStats: { ...cs, cash: cs.cash - weaponToBuy.price, equippedWeapon: weaponToBuy, equippedWeaponAmmo: newEquippedWeaponAmmo } };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-  const buyAmmoForEquippedWeapon = useCallback(() => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const cs = prev.playerStats;
-        if (!cs.equippedWeapon || !cs.equippedWeapon.isFirearm || !cs.equippedWeapon.clipSize) {
-            setTimeout(() => toast({ title: "No Firearm", description: "You don't have a firearm equipped to buy ammo for.", variant: "destructive" }), 0);
-            return prev;
-        }
-
-        const weapon = cs.equippedWeapon;
-        const ammoCost = Math.round(weapon.price * 0.10); 
-
-        if (cs.cash < ammoCost) {
-            setTimeout(() => toast({ title: "Not Enough Cash", description: `Need $${ammoCost.toLocaleString()} to buy a clip for ${weapon.name}.`, variant: "destructive" }), 0);
-            return prev;
-        }
-
-        const currentAmmoState = cs.equippedWeaponAmmo || { currentInClip: 0, reserveAmmo: 0 };
-        const maxReserveAmmo = weapon.clipSize * 2; 
-
-        if (currentAmmoState.currentInClip === weapon.clipSize && currentAmmoState.reserveAmmo === maxReserveAmmo) {
-            setTimeout(() => toast({ title: "Max Ammo", description: `${weapon.name} is already fully loaded.` }), 0);
-            return prev;
-        }
-        
-        let newCurrentInClip = currentAmmoState.currentInClip;
-        let newReserveAmmo = currentAmmoState.reserveAmmo;
-        let ammoToDistribute = weapon.clipSize; 
-
-        const neededForCurrentClip = weapon.clipSize - newCurrentInClip;
-        if (neededForCurrentClip > 0) {
-            const fillCurrentAmount = Math.min(neededForCurrentClip, ammoToDistribute);
-            newCurrentInClip += fillCurrentAmount;
-            ammoToDistribute -= fillCurrentAmount;
-        }
-
-        if (ammoToDistribute > 0) {
-            const spaceInReserve = maxReserveAmmo - newReserveAmmo;
-            const fillReserveAmount = Math.min(spaceInReserve, ammoToDistribute);
-            newReserveAmmo += fillReserveAmount;
-        }
-        
-        const bulletsActuallyAdded = (newCurrentInClip + newReserveAmmo) - (currentAmmoState.currentInClip + currentAmmoState.reserveAmmo);
-
-        if (bulletsActuallyAdded === 0) {
-            setTimeout(() => toast({ title: "Max Ammo", description: `${weapon.name} is already at maximum ammo capacity.` }), 0);
-            return prev;
-        }
-
-
-        const msg = `Bought a clip (${weapon.clipSize} rounds) for ${weapon.name} for $${ammoCost.toLocaleString()}.`;
-        setTimeout(() => toast({ title: "Ammo Purchased!", description: msg }), 0);
-        addLogEntry('shop_ammo_purchase', msg);
-
-        return {
-            ...prev,
-            playerStats: {
-            ...cs,
-            cash: cs.cash - ammoCost,
-            equippedWeaponAmmo: {
-                currentInClip: newCurrentInClip,
-                reserveAmmo: newReserveAmmo,
-            },
-            },
-        };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-
-  const buyArmor = useCallback((armorToBuy: Armor) => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const cs = prev.playerStats;
-
-        if (cs.purchasedArmorIds.includes(armorToBuy.id)) {
-            if (cs.equippedArmor?.id !== armorToBuy.id) {
-            setTimeout(() => toast({ title: "Armor Equipped", description: `Equipped ${armorToBuy.name}.` }), 0);
-            return { ...prev, playerStats: { ...cs, equippedArmor: armorToBuy } };
-            } else {
-            setTimeout(() => toast({ title: "Already Equipped", description: `You are already wearing ${armorToBuy.name}.` }), 0);
-            return prev;
-            }
-        }
-
-        if (cs.cash < armorToBuy.price) {
-            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
-            return prev;
-        }
-
-        const newPlayerStats = {
-            ...cs,
-            cash: cs.cash - armorToBuy.price,
-            purchasedArmorIds: [...cs.purchasedArmorIds, armorToBuy.id],
-            equippedArmor: armorToBuy, 
-        };
-
-        const msg = `Purchased and equipped ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection: ${armorToBuy.protectionBonus}.`;
-        setTimeout(() => toast({ title: "Armor Acquired!", description: msg }), 0);
-        addLogEntry('shop_armor_purchase', msg);
-
-        return { ...prev, playerStats: newPlayerStats };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-
-  const buyHealingItem = useCallback((itemToBuy: HealingItem) => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const cs = prev.playerStats;
-        if (cs.cash < itemToBuy.price) {
-            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
-            return prev;
-        }
-        if (cs.health >= MAX_PLAYER_HEALTH) {
-            setTimeout(() => toast({ title: "Full Health", description: "You are already at maximum health." }), 0);
-            return prev;
-        }
-
-        let healthToRestore = 0;
-        if (itemToBuy.isFullHeal) {
-            healthToRestore = MAX_PLAYER_HEALTH - cs.health;
-        } else if (itemToBuy.isPercentageHeal && typeof itemToBuy.healAmount === 'number') {
-            healthToRestore = Math.round(MAX_PLAYER_HEALTH * (itemToBuy.healAmount / 100));
-        } else if (typeof itemToBuy.healAmount === 'number') {
-            healthToRestore = itemToBuy.healAmount;
-        }
-
-        const newHealth = Math.min(MAX_PLAYER_HEALTH, cs.health + healthToRestore);
-        const healedAmount = newHealth - cs.health;
-
-        if (healedAmount <= 0) { 
-            setTimeout(() => toast({ title: "No Effect", description: "This item provided no additional healing." }), 0);
-            return prev;
-        }
-
-        const msg = `Used ${itemToBuy.name}. Healed ${healedAmount} HP.`;
-        setTimeout(() => toast({ title: "Healing Applied!", description: msg }), 0);
-        addLogEntry('shop_healing_purchase', msg);
-        addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
-        return { ...prev, playerStats: { ...cs, cash: cs.cash - itemToBuy.price, health: newHealth } };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-  const buyCapacityUpgrade = useCallback((upgradeToBuy: CapacityUpgrade) => {
-    if (!user) return;
-    if (isMounted.current) {
-        setGameState(prev => {
-        const cs = prev.playerStats;
-        if (cs.purchasedUpgradeIds.includes(upgradeToBuy.id)) {
-            setTimeout(() => toast({ title: "Already Owned" }), 0);
-            return prev;
-        }
-        if (cs.cash < upgradeToBuy.price) {
-            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
-            return prev;
-        }
-        const msg = `Purchased ${upgradeToBuy.name}. Capacity +${upgradeToBuy.capacityIncrease}.`;
-        setTimeout(() => toast({ title: "Upgrade Acquired!", description: msg }), 0);
-        addLogEntry('shop_capacity_upgrade', msg);
-        return { ...prev, playerStats: { ...cs, cash: cs.cash - upgradeToBuy.price, maxInventoryCapacity: cs.maxInventoryCapacity + upgradeToBuy.capacityIncrease, purchasedUpgradeIds: [...cs.purchasedUpgradeIds, upgradeToBuy.id] } };
-        });
-    }
-  }, [toast, addLogEntry, user]);
-
-  const travelToLocation = useCallback(async (targetLocation: string) => {
-    if (!user) return;
-
-    if (isMounted.current) {
-      // Use setGameState with a callback to get the most recent state
-      setGameState(prev => {
-        const currentLoc = prev.playerStats.currentLocation;
-        if (currentLoc === targetLocation) {
-          setTimeout(() => toast({ title: "Already There", description: `You are already in ${targetLocation}.` }), 0);
-          return prev; // Return previous state, no changes
-        }
-
-        if (prev.playerStats.travelsThisDay >= 5) {
-          addLogEntry('info', `Travel limit of 5 reached for the day. Advancing to the next day.`);
-          setTimeout(() => toast({ title: "Travel Limit Reached", description: "Advancing to the next day." }), 0);
-          
-          // Directly call handleNextDay. It will manage its own state updates.
-          // No need to return a new state here if handleNextDay will take over.
-          // However, we need to ensure this setGameState call completes *before* handleNextDay might try to read stale state.
-          // To be safe, we set isLoadingNextDay and let handleNextDay run.
-          // The handleNextDay function should be robust enough to handle being called at this point.
-          Promise.resolve().then(() => handleNextDay()); // Schedule handleNextDay to run after current updates.
-
-          return { ...prev, isLoadingNextDay: true }; // Set loading for next day
-        }
-        
-        // Proceed with travel logic
-        const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
-        addLogEntry('travel', travelMessage);
-        setTimeout(() => toast({ title: "Travel Successful", description: travelMessage }), 0);
-
-        const previousPricesInOldLocation = [...prev.marketPrices];
-
-        // This part will update state for the travel itself
-        const newStateAfterTravelSetup = {
-          ...prev,
-          playerStats: { 
-            ...prev.playerStats, 
-            currentLocation: targetLocation,
-            travelsThisDay: prev.playerStats.travelsThisDay + 1, // Increment travel count
-          },
-          isLoadingMarket: true,
-          localHeadlines: [],
-          marketPrices: [],
-          previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest),
-        };
-        
-        // Fetch new market data after setting the new location
-        // This needs to be an async operation outside the main setGameState
-        (async () => {
-            try {
-                const newRawPrices = await getMarketPrices(targetLocation, newStateAfterTravelSetup.playerStats.daysPassed, newStateAfterTravelSetup.boroughHeatLevels);
-                const newHeadlines = await getLocalHeadlines(targetLocation);
-
-                const currentActiveEvents = newStateAfterTravelSetup.activeBoroughEvents;
-
-                let finalPricesWithImpacts = applyHeadlineImpacts(newRawPrices, newHeadlines);
-                finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]);
-
-                const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
-                const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
-                let direction: DrugPrice['priceChangeDirection'] = 'new';
-                if(baseDrug){
-                    if(currentDrug.price === baseDrug.basePrice) direction = 'same';
-                    else if (currentDrug.price > baseDrug.basePrice) direction = 'up';
-                    else direction = 'down';
-                }
-                return { ...currentDrug, priceChangeDirection: direction };
-                });
-
-                if (isMounted.current) {
-                    setGameState(s => ({ // Use functional update here for safety
-                        ...s,
-                        marketPrices: newMarketPricesWithDirection,
-                        localHeadlines: newHeadlines,
-                        isLoadingMarket: false
-                    }));
-                }
-                addLogEntry('info', `Market data for ${targetLocation} updated.`);
-            } catch (e) {
-                console.error("Market fetch error during travel:", e);
-                if (isMounted.current) {
-                    setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
-                    setGameState(s => ({...s, isLoadingMarket: false}));
-                }
-            }
-        })();
-
-        return newStateAfterTravelSetup; // Return the state updated for initiating travel
-      });
-    }
-  }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); // Added handleNextDay as a dependency
-
- const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
+  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     if (!user || gameState.playerStats.daysPassed <= 10) { 
       if (gameState.playerStats.daysPassed <= 10 && isMounted.current) {
         addLogEntry('info', `An encounter with ${opponentType} was avoided due to being early in the game.`);
@@ -1038,6 +582,463 @@ export function useGameLogic(user: User | null) {
     }
   }, [gameState, toast, addLogEntry, startBattle, applyHeadlineImpacts, user]);
 
+
+  const fetchInitialData = useCallback(async () => {
+    
+    if (!user) {
+        if (isMounted.current) setGameState(prev => ({...prev, isLoadingMarket: false})); 
+        return;
+    }
+    if (isMounted.current) setGameState(prev => ({ ...prev, isLoadingMarket: true }));
+    resetUniqueEvents(); 
+
+    try {
+      const initialPlayerStats = createInitialPlayerStats(user);
+      const rawDay0Prices = await getMarketPrices(initialPlayerStats.currentLocation, 0, gameState.boroughHeatLevels); 
+      const [headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
+        getLocalHeadlines(initialPlayerStats.currentLocation),
+        getShopWeapons(),
+        getShopArmor(),
+        getShopHealingItems(),
+        getShopCapacityUpgrades(),
+        getTodaysEvents(initialPlayerStats.daysPassed, gameState.boroughHeatLevels),
+      ]);
+
+      let finalDay0PricesWithImpacts = applyHeadlineImpacts(rawDay0Prices, headlines);
+      const eventInPlayerLocation = dailyEvents[initialPlayerStats.currentLocation];
+      finalDay0PricesWithImpacts = applyEventPriceModifiers(finalDay0PricesWithImpacts, eventInPlayerLocation);
+      
+      const fictionalDayMinus1Prices = ALL_DRUGS.map(d => ({
+        drug: d.name,
+        price: d.basePrice, 
+        volatility: d.volatility, 
+      }));
+
+      const day0MarketPricesWithDirection = finalDay0PricesWithImpacts.map(currentDrug => {
+        const prevDrug = fictionalDayMinus1Prices.find(p => p.drug === currentDrug.drug);
+        let direction: DrugPrice['priceChangeDirection'] = 'new'; 
+        if (prevDrug) {
+          if (currentDrug.price > prevDrug.price) direction = 'up';
+          else if (currentDrug.price < prevDrug.price) direction = 'down';
+          else direction = 'same';
+        }
+        return { ...currentDrug, priceChangeDirection: direction };
+      });
+
+
+      const initialBoroughHeat = { ...gameState.boroughHeatLevels };
+      for (const borough in dailyEvents) {
+        const event = dailyEvents[borough];
+        if (event?.effects.heatChange) {
+          initialBoroughHeat[borough] = Math.max(0, Math.min(5, (initialBoroughHeat[borough] || 0) + event.effects.heatChange));
+        }
+         if (event && isMounted.current) { 
+          const durationText = event.durationInDays && event.durationInDays > 1 ? ` (lasts ${event.durationInDays} days)` : '';
+          addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
+        }
+      }
+      
+      if (isMounted.current) {
+        setGameState(prev => ({
+          ...prev,
+          playerStats: initialPlayerStats, 
+          marketPrices: day0MarketPricesWithDirection,
+          previousMarketPrices: finalDay0PricesWithImpacts.map(({priceChangeDirection, ...rest}) => rest), 
+          localHeadlines: headlines,
+          availableWeapons: weapons,
+          availableArmor: armor,
+          availableHealingItems: healingItems,
+          availableCapacityUpgrades: capacityUpgrades,
+          activeBoroughEvents: dailyEvents,
+          boroughHeatLevels: initialBoroughHeat,
+          isLoadingMarket: false,
+        }));
+        addLogEntry('info', `Game started in ${initialPlayerStats.currentLocation}. Market, shop, and events loaded.`);
+      }
+    } catch (error) {
+      console.error("Failed to fetch initial game data:", error);
+      if (isMounted.current) {
+        setTimeout(() => toast({ title: "Error", description: "Could not load game data. Try refreshing.", variant: "destructive" }), 0);
+        addLogEntry('info', 'Error loading initial game data.');
+        setGameState(prev => ({ ...prev, isLoadingMarket: false }));
+      }
+    }
+  
+  }, [toast, addLogEntry, applyHeadlineImpacts, user, gameState.boroughHeatLevels, handleNextDay]); // Added handleNextDay as dependency if needed by fetchInitialData (indirectly via reset or similar patterns)
+
+  useEffect(() => {
+    if (user) { 
+        fetchInitialData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // fetchInitialData is already memoized, so directly including it might cause loops if its own deps aren't stable. User is the main trigger.
+
+
+  const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    if (!user) return; 
+    if (isMounted.current) {
+        setGameState(prev => {
+        const currentStats = prev.playerStats;
+        const cost = quantity * price;
+        if (quantity <= 0) {
+            setTimeout(() => toast({ title: "Invalid Quantity", description: "Please enter a positive amount to buy.", variant: "destructive" }), 0);
+            return prev;
+        }
+        if (currentStats.cash < cost) {
+            setTimeout(() => toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" }), 0);
+            return prev;
+        }
+        const currentTotalUnits = Object.values(currentStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
+        if (currentTotalUnits + quantity > currentStats.maxInventoryCapacity) {
+            setTimeout(() => toast({ title: "Not Enough Space", description: `You can only carry ${currentStats.maxInventoryCapacity - currentTotalUnits} more units.`, variant: "destructive" }), 0);
+            return prev;
+        }
+        const newInventory = { ...currentStats.inventory };
+        const currentItem: InventoryItem = newInventory[drugName] || { quantity: 0, totalCost: 0 };
+        newInventory[drugName] = { quantity: currentItem.quantity + quantity, totalCost: currentItem.totalCost + cost };
+        const successMsg = `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.`;
+        setTimeout(() => toast({ title: "Purchase Successful", description: successMsg }), 0);
+        addLogEntry('buy', successMsg);
+        const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
+        return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash - cost, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+  const sellDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const currentStats = prev.playerStats;
+        const currentItem = currentStats.inventory[drugName];
+        if (quantity <= 0) {
+            setTimeout(() => toast({ title: "Invalid Quantity", description: "Please enter a positive amount.", variant: "destructive" }), 0);
+            return prev;
+        }
+        if (!currentItem || currentItem.quantity < quantity) {
+            setTimeout(() => toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }), 0);
+            return prev;
+        }
+
+        const earnings = quantity * price;
+        const newInventory = { ...currentStats.inventory };
+
+        const avgCostPerUnit = currentItem.quantity > 0 ? (currentItem.totalCost / currentItem.quantity) : 0;
+        const costOfGoodsSold = avgCostPerUnit * quantity;
+
+        const newQuantity = currentItem.quantity - quantity;
+
+        if (newQuantity > 0) {
+            newInventory[drugName] = {
+            quantity: newQuantity,
+            totalCost: Math.max(0, currentItem.totalCost - costOfGoodsSold)
+            };
+        } else {
+            delete newInventory[drugName];
+        }
+        const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
+        setTimeout(() => toast({ title: "Sale Successful", description: successMsg }), 0);
+        addLogEntry('sell', successMsg);
+        const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
+        return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash + earnings, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+  const buyWeapon = useCallback((weaponToBuy: Weapon) => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const cs = prev.playerStats;
+        if (cs.cash < weaponToBuy.price) {
+            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
+            return prev;
+        }
+        if (cs.equippedWeapon?.name === weaponToBuy.name) {
+            setTimeout(() => toast({ title: "Already Equipped" }), 0);
+            return prev;
+        }
+
+        let newEquippedWeaponAmmo: PlayerStats['equippedWeaponAmmo'] = null;
+        if (weaponToBuy.isFirearm && weaponToBuy.clipSize && weaponToBuy.clipSize > 0) {
+            newEquippedWeaponAmmo = {
+            currentInClip: weaponToBuy.clipSize, 
+            reserveAmmo: weaponToBuy.clipSize * 2, 
+            };
+        }
+
+        const msg = `Purchased ${weaponToBuy.name} for $${weaponToBuy.price.toLocaleString()}.`;
+        setTimeout(() => toast({ title: "Weapon Acquired!", description: msg }), 0);
+        addLogEntry('shop_weapon_purchase', msg);
+        return { ...prev, playerStats: { ...cs, cash: cs.cash - weaponToBuy.price, equippedWeapon: weaponToBuy, equippedWeaponAmmo: newEquippedWeaponAmmo } };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+  const buyAmmoForEquippedWeapon = useCallback(() => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const cs = prev.playerStats;
+        if (!cs.equippedWeapon || !cs.equippedWeapon.isFirearm || !cs.equippedWeapon.clipSize) {
+            setTimeout(() => toast({ title: "No Firearm", description: "You don't have a firearm equipped to buy ammo for.", variant: "destructive" }), 0);
+            return prev;
+        }
+
+        const weapon = cs.equippedWeapon;
+        const ammoCost = Math.round(weapon.price * 0.10); 
+
+        if (cs.cash < ammoCost) {
+            setTimeout(() => toast({ title: "Not Enough Cash", description: `Need $${ammoCost.toLocaleString()} to buy a clip for ${weapon.name}.`, variant: "destructive" }), 0);
+            return prev;
+        }
+
+        const currentAmmoState = cs.equippedWeaponAmmo || { currentInClip: 0, reserveAmmo: 0 };
+        const maxReserveAmmo = weapon.clipSize * 2; 
+
+        if (currentAmmoState.currentInClip === weapon.clipSize && currentAmmoState.reserveAmmo === maxReserveAmmo) {
+            setTimeout(() => toast({ title: "Max Ammo", description: `${weapon.name} is already fully loaded.` }), 0);
+            return prev;
+        }
+        
+        let newCurrentInClip = currentAmmoState.currentInClip;
+        let newReserveAmmo = currentAmmoState.reserveAmmo;
+        let ammoToDistribute = weapon.clipSize; 
+
+        const neededForCurrentClip = weapon.clipSize - newCurrentInClip;
+        if (neededForCurrentClip > 0) {
+            const fillCurrentAmount = Math.min(neededForCurrentClip, ammoToDistribute);
+            newCurrentInClip += fillCurrentAmount;
+            ammoToDistribute -= fillCurrentAmount;
+        }
+
+        if (ammoToDistribute > 0) {
+            const spaceInReserve = maxReserveAmmo - newReserveAmmo;
+            const fillReserveAmount = Math.min(spaceInReserve, ammoToDistribute);
+            newReserveAmmo += fillReserveAmount;
+        }
+        
+        const bulletsActuallyAdded = (newCurrentInClip + newReserveAmmo) - (currentAmmoState.currentInClip + currentAmmoState.reserveAmmo);
+
+        if (bulletsActuallyAdded === 0) {
+            setTimeout(() => toast({ title: "Max Ammo", description: `${weapon.name} is already at maximum ammo capacity.` }), 0);
+            return prev;
+        }
+
+
+        const msg = `Bought a clip (${weapon.clipSize} rounds) for ${weapon.name} for $${ammoCost.toLocaleString()}.`;
+        setTimeout(() => toast({ title: "Ammo Purchased!", description: msg }), 0);
+        addLogEntry('shop_ammo_purchase', msg);
+
+        return {
+            ...prev,
+            playerStats: {
+            ...cs,
+            cash: cs.cash - ammoCost,
+            equippedWeaponAmmo: {
+                currentInClip: newCurrentInClip,
+                reserveAmmo: newReserveAmmo,
+            },
+            },
+        };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+
+  const buyArmor = useCallback((armorToBuy: Armor) => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const cs = prev.playerStats;
+
+        if (cs.purchasedArmorIds.includes(armorToBuy.id)) {
+            if (cs.equippedArmor?.id !== armorToBuy.id) {
+            setTimeout(() => toast({ title: "Armor Equipped", description: `Equipped ${armorToBuy.name}.` }), 0);
+            return { ...prev, playerStats: { ...cs, equippedArmor: armorToBuy } };
+            } else {
+            setTimeout(() => toast({ title: "Already Equipped", description: `You are already wearing ${armorToBuy.name}.` }), 0);
+            return prev;
+            }
+        }
+
+        if (cs.cash < armorToBuy.price) {
+            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
+            return prev;
+        }
+
+        const newPlayerStats = {
+            ...cs,
+            cash: cs.cash - armorToBuy.price,
+            purchasedArmorIds: [...cs.purchasedArmorIds, armorToBuy.id],
+            equippedArmor: armorToBuy, 
+        };
+
+        const msg = `Purchased and equipped ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection: ${armorToBuy.protectionBonus}.`;
+        setTimeout(() => toast({ title: "Armor Acquired!", description: msg }), 0);
+        addLogEntry('shop_armor_purchase', msg);
+
+        return { ...prev, playerStats: newPlayerStats };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+
+  const buyHealingItem = useCallback((itemToBuy: HealingItem) => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const cs = prev.playerStats;
+        if (cs.cash < itemToBuy.price) {
+            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
+            return prev;
+        }
+        if (cs.health >= MAX_PLAYER_HEALTH) {
+            setTimeout(() => toast({ title: "Full Health", description: "You are already at maximum health." }), 0);
+            return prev;
+        }
+
+        let healthToRestore = 0;
+        if (itemToBuy.isFullHeal) {
+            healthToRestore = MAX_PLAYER_HEALTH - cs.health;
+        } else if (itemToBuy.isPercentageHeal && typeof itemToBuy.healAmount === 'number') {
+            healthToRestore = Math.round(MAX_PLAYER_HEALTH * (itemToBuy.healAmount / 100));
+        } else if (typeof itemToBuy.healAmount === 'number') {
+            healthToRestore = itemToBuy.healAmount;
+        }
+
+        const newHealth = Math.min(MAX_PLAYER_HEALTH, cs.health + healthToRestore);
+        const healedAmount = newHealth - cs.health;
+
+        if (healedAmount <= 0) { 
+            setTimeout(() => toast({ title: "No Effect", description: "This item provided no additional healing." }), 0);
+            return prev;
+        }
+
+        const msg = `Used ${itemToBuy.name}. Healed ${healedAmount} HP.`;
+        setTimeout(() => toast({ title: "Healing Applied!", description: msg }), 0);
+        addLogEntry('shop_healing_purchase', msg);
+        addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
+        return { ...prev, playerStats: { ...cs, cash: cs.cash - itemToBuy.price, health: newHealth } };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+  const buyCapacityUpgrade = useCallback((upgradeToBuy: CapacityUpgrade) => {
+    if (!user) return;
+    if (isMounted.current) {
+        setGameState(prev => {
+        const cs = prev.playerStats;
+        if (cs.purchasedUpgradeIds.includes(upgradeToBuy.id)) {
+            setTimeout(() => toast({ title: "Already Owned" }), 0);
+            return prev;
+        }
+        if (cs.cash < upgradeToBuy.price) {
+            setTimeout(() => toast({ title: "Not Enough Cash", variant: "destructive" }), 0);
+            return prev;
+        }
+        const msg = `Purchased ${upgradeToBuy.name}. Capacity +${upgradeToBuy.capacityIncrease}.`;
+        setTimeout(() => toast({ title: "Upgrade Acquired!", description: msg }), 0);
+        addLogEntry('shop_capacity_upgrade', msg);
+        return { ...prev, playerStats: { ...cs, cash: cs.cash - upgradeToBuy.price, maxInventoryCapacity: cs.maxInventoryCapacity + upgradeToBuy.capacityIncrease, purchasedUpgradeIds: [...cs.purchasedUpgradeIds, upgradeToBuy.id] } };
+        });
+    }
+  }, [toast, addLogEntry, user]);
+
+  const travelToLocation = useCallback(async (targetLocation: string) => {
+    if (!user) return;
+
+    if (isMounted.current) {
+      // Use setGameState with a callback to get the most recent state
+      setGameState(prev => {
+        const currentLoc = prev.playerStats.currentLocation;
+        if (currentLoc === targetLocation) {
+          setTimeout(() => toast({ title: "Already There", description: `You are already in ${targetLocation}.` }), 0);
+          return prev; // Return previous state, no changes
+        }
+
+        if (prev.playerStats.travelsThisDay >= 5) {
+          addLogEntry('info', `Travel limit of 5 reached for the day. Advancing to the next day.`);
+          setTimeout(() => toast({ title: "Travel Limit Reached", description: "Advancing to the next day." }), 0);
+          
+          // Directly call handleNextDay. It will manage its own state updates.
+          // No need to return a new state here if handleNextDay will take over.
+          // However, we need to ensure this setGameState call completes *before* handleNextDay might try to read stale state.
+          // To be safe, we set isLoadingNextDay and let handleNextDay run.
+          // The handleNextDay function should be robust enough to handle being called at this point.
+          Promise.resolve().then(() => handleNextDay()); // Schedule handleNextDay to run after current updates.
+
+          return { ...prev, isLoadingNextDay: true }; // Set loading for next day
+        }
+        
+        // Proceed with travel logic
+        const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
+        addLogEntry('travel', travelMessage);
+        setTimeout(() => toast({ title: "Travel Successful", description: travelMessage }), 0);
+
+        const previousPricesInOldLocation = [...prev.marketPrices];
+
+        // This part will update state for the travel itself
+        const newStateAfterTravelSetup = {
+          ...prev,
+          playerStats: { 
+            ...prev.playerStats, 
+            currentLocation: targetLocation,
+            travelsThisDay: prev.playerStats.travelsThisDay + 1, // Increment travel count
+          },
+          isLoadingMarket: true,
+          localHeadlines: [],
+          marketPrices: [],
+          previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest),
+        };
+        
+        // Fetch new market data after setting the new location
+        // This needs to be an async operation outside the main setGameState
+        (async () => {
+            try {
+                const newRawPrices = await getMarketPrices(targetLocation, newStateAfterTravelSetup.playerStats.daysPassed, newStateAfterTravelSetup.boroughHeatLevels);
+                const newHeadlines = await getLocalHeadlines(targetLocation);
+
+                const currentActiveEvents = newStateAfterTravelSetup.activeBoroughEvents;
+
+                let finalPricesWithImpacts = applyHeadlineImpacts(newRawPrices, newHeadlines);
+                finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]);
+
+                const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
+                const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
+                let direction: DrugPrice['priceChangeDirection'] = 'new';
+                if(baseDrug){
+                    if(currentDrug.price === baseDrug.basePrice) direction = 'same';
+                    else if (currentDrug.price > baseDrug.basePrice) direction = 'up';
+                    else direction = 'down';
+                }
+                return { ...currentDrug, priceChangeDirection: direction };
+                });
+
+                if (isMounted.current) {
+                    setGameState(s => ({ // Use functional update here for safety
+                        ...s,
+                        marketPrices: newMarketPricesWithDirection,
+                        localHeadlines: newHeadlines,
+                        isLoadingMarket: false
+                    }));
+                }
+                addLogEntry('info', `Market data for ${targetLocation} updated.`);
+            } catch (e) {
+                console.error("Market fetch error during travel:", e);
+                if (isMounted.current) {
+                    setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
+                    setGameState(s => ({...s, isLoadingMarket: false}));
+                }
+            }
+        })();
+
+        return newStateAfterTravelSetup; // Return the state updated for initiating travel
+      });
+    }
+  }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); // Added handleNextDay as a dependency
+
+
   const resetGame = useCallback(() => {
     if (!user) return; 
      const initialHeatLevelsReset: Record<string, number> = {};
@@ -1064,3 +1065,4 @@ export function useGameLogic(user: User | null) {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+
