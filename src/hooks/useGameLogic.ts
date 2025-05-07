@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem } from '@/types/game';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
-import { simulateCombat } from '@/services/combat';
+import { simulateCombat, type CombatOutcome } from '@/services/combat';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
 
@@ -70,12 +70,18 @@ export function useGameLogic() {
   const applyHeadlineImpacts = (prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
     if (!headlines.length) return prices;
     
-    const totalImpactFactor = headlines.reduce((sum, h) => sum + h.priceImpact, 0);
-    
-    return prices.map(drugPrice => ({
-      ...drugPrice,
-      price: Math.max(1, Math.round(drugPrice.price * (1 + totalImpactFactor))), 
-    }));
+    // Simplified: apply each headline's impact additively to all drugs
+    // A more complex model could have drug-specific or category-specific impacts
+    return prices.map(drugPrice => {
+      let newPrice = drugPrice.price;
+      headlines.forEach(headline => {
+        newPrice *= (1 + headline.priceImpact);
+      });
+      return {
+        ...drugPrice,
+        price: Math.max(1, Math.round(newPrice)), 
+      };
+    });
   };
 
   const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
@@ -145,7 +151,7 @@ export function useGameLogic() {
       if (newQuantity > 0) {
         newInventory[drugName] = {
           quantity: newQuantity,
-          totalCost: Math.max(0, newTotalCost), // Prevent negative totalCost due to floating point issues
+          totalCost: Math.max(0, newTotalCost), 
         };
       } else {
         delete newInventory[drugName];
@@ -176,26 +182,25 @@ export function useGameLogic() {
 
     setGameState(prev => ({ ...prev, isLoadingNextDay: true, gameMessage: null }));
 
-    const newDaysPassed = gameState.playerStats.daysPassed + 1;
-    addLogEntry('info', `Day ${newDaysPassed} begins.`);
-    let newHealth = gameState.playerStats.health;
-    let newCash = gameState.playerStats.cash;
-    let newReputation = gameState.playerStats.reputation;
-    let newLocation = gameState.playerStats.currentLocation;
-
-    if (newDaysPassed % 7 === 0) {
-        const currentLocationIndex = CITIES.indexOf(newLocation);
-        newLocation = CITIES[(currentLocationIndex + 1) % CITIES.length];
-        const travelMsg = `You moved to ${newLocation}.`;
+    let currentStats = { ...gameState.playerStats };
+    currentStats.daysPassed += 1;
+    addLogEntry('info', `Day ${currentStats.daysPassed} begins.`);
+    
+    // Travel
+    if (currentStats.daysPassed % 7 === 0) {
+        const currentLocationIndex = CITIES.indexOf(currentStats.currentLocation);
+        currentStats.currentLocation = CITIES[(currentLocationIndex + 1) % CITIES.length];
+        const travelMsg = `You moved to ${currentStats.currentLocation}.`;
         toast({ title: "Travel", description: travelMsg });
         addLogEntry('travel', travelMsg);
     }
 
+    // Market Update
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
-      newMarketPrices = await getMarketPrices(newLocation);
-      newLocalHeadlines = await getLocalHeadlines(newLocation);
+      newMarketPrices = await getMarketPrices(currentStats.currentLocation);
+      newLocalHeadlines = await getLocalHeadlines(currentStats.currentLocation);
       newMarketPrices = applyHeadlineImpacts(newMarketPrices, newLocalHeadlines);
     } catch (error) {
       console.error("Failed to fetch market data for next day:", error);
@@ -204,36 +209,44 @@ export function useGameLogic() {
       addLogEntry('info', marketErrorMsg);
     }
     
-    if (Math.random() < 0.25) {
-      const opponentTypes = ["police", "gang", "fiend"];
+    // Random Event: Combat
+    if (Math.random() < 0.35) { // Increased probability for testing
+      const opponentTypes = ["police", "gang", "fiend"] as const;
       const opponentType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
-      const encounterMsg = `You've run into ${opponentType}!`;
-      toast({ title: "Encounter!", description: encounterMsg});
+      const encounterMsg = `You've run into ${opponentType === 'police' ? 'the police' : opponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'}!`;
+      toast({ title: "Encounter!", description: encounterMsg, duration: 4000 });
       addLogEntry('info', encounterMsg);
       
       try {
-        const combatResult = await simulateCombat(opponentType, gameState.playerStats);
-        const healthLost = combatResult.healthLost;
-        newHealth -= healthLost;
-        addLogEntry('health_update', `Lost ${healthLost} health in combat.`);
+        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats);
         
-        if (combatResult.playerWins) {
-          const combatWinMsg = `You survived the encounter with ${opponentType}, lost ${healthLost} health.`;
-          toast({ title: "Combat Over", description: combatWinMsg });
-          addLogEntry('combat_win', combatWinMsg);
-          if(opponentType === "gang") newReputation += 5;
-        } else {
-          const cashLossPercentage = Math.random() * 0.3 + 0.2; // Lose 20-50% of cash
-          const cashLoss = Math.min(newCash, Math.floor(newCash * cashLossPercentage)); 
-          newCash -= cashLoss;
-          const combatLossMsg = `Lost to ${opponentType}! Lost ${healthLost} health and $${cashLoss.toLocaleString()}.`;
-          toast({ 
-            title: "Combat Lost!", 
-            description: combatLossMsg,
-            variant: "destructive"
-          });
-          addLogEntry('combat_loss', combatLossMsg);
+        currentStats.health -= combatOutcome.healthLost;
+        currentStats.cash += combatOutcome.cashChange;
+        currentStats.reputation += combatOutcome.reputationChange;
+
+        // Ensure stats don't go below zero where applicable
+        currentStats.health = Math.max(0, currentStats.health);
+        currentStats.cash = Math.max(0, currentStats.cash);
+        // Reputation can be negative
+
+        toast({
+          title: combatOutcome.playerWins ? "Victory!" : "Defeat!",
+          description: combatOutcome.narration,
+          variant: combatOutcome.playerWins ? "default" : "destructive",
+          duration: 6000
+        });
+        
+        addLogEntry(combatOutcome.playerWins ? 'combat_win' : 'combat_loss', combatOutcome.narration);
+        if (combatOutcome.healthLost > 0) {
+          addLogEntry('health_update', `Lost ${combatOutcome.healthLost} health.`);
         }
+        if (combatOutcome.cashChange !== 0) {
+          addLogEntry('info', `${combatOutcome.cashChange > 0 ? 'Gained' : 'Lost'} $${Math.abs(combatOutcome.cashChange).toLocaleString()}.`);
+        }
+        if (combatOutcome.reputationChange !== 0) {
+          addLogEntry('info', `Reputation changed by ${combatOutcome.reputationChange}.`);
+        }
+
       } catch (error) {
          console.error("Failed to simulate combat:", error);
          const combatErrorMsg = "Error during combat simulation.";
@@ -242,45 +255,40 @@ export function useGameLogic() {
       }
     }
 
-    const oldRank = gameState.playerStats.rank;
-    let newRank = gameState.playerStats.rank;
-    if (newCash > 50000 && newReputation > 200 && newRank !== 'Baron' && newRank !== 'Kingpin') newRank = 'Baron';
-    else if (newCash > 20000 && newReputation > 100 && newRank !== 'Distributor' && newRank !== 'Baron' && newRank !== 'Kingpin') newRank = 'Distributor';
-    else if (newCash > 10000 && newReputation > 50 && newRank !== 'Supplier' && newRank !== 'Distributor' && newRank !== 'Baron' && newRank !== 'Kingpin') newRank = 'Supplier';
-    else if (newCash > 5000 && newReputation > 20 && newRank !== 'Dealer' && newRank !== 'Supplier' && newRank !== 'Distributor' && newRank !== 'Baron' && newRank !== 'Kingpin') newRank = 'Dealer';
-    else if (newCash > 2000 && newReputation > 5 && newRank !== 'Peddler' && newRank !== 'Dealer' && newRank !== 'Supplier' && newRank !== 'Distributor' && newRank !== 'Baron' && newRank !== 'Kingpin') newRank = 'Peddler';
+    // Check for Game Over due to health
+    if (currentStats.health <= 0) {
+      const gameOverMsg = "Your health reached 0. Game Over.";
+      setGameState(prev => ({
+        ...prev,
+        playerStats: { ...currentStats, health: 0 }, // Final stats update
+        isGameOver: true,
+        isLoadingNextDay: false,
+        marketPrices: newMarketPrices, // Update market prices even on game over
+        localHeadlines: newLocalHeadlines,
+      }));
+      toast({ title: "Game Over", description: gameOverMsg, variant: "destructive" });
+      addLogEntry('game_over', gameOverMsg);
+      return; // End a_sync processing for this day
+    }
     
-    if (newRank !== oldRank) {
-      const rankUpMsg = `You've been promoted to ${newRank}!`;
+    // Rank Update
+    const oldRank = currentStats.rank;
+    if (currentStats.cash > 50000 && currentStats.reputation > 200 && currentStats.rank !== 'Kingpin') currentStats.rank = 'Kingpin';
+    else if (currentStats.cash > 25000 && currentStats.reputation > 100 && !['Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Baron';
+    else if (currentStats.cash > 10000 && currentStats.reputation > 50 && !['Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Distributor';
+    else if (currentStats.cash > 5000 && currentStats.reputation > 25 && !['Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Supplier';
+    else if (currentStats.cash > 2000 && currentStats.reputation > 10 && !['Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Dealer';
+    else if (currentStats.cash > 1000 && currentStats.reputation > 5 && !['Peddler', 'Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Peddler';
+    
+    if (currentStats.rank !== oldRank) {
+      const rankUpMsg = `You've been promoted to ${currentStats.rank}!`;
       toast({title: "Rank Up!", description: rankUpMsg});
       addLogEntry('rank_up', rankUpMsg);
     }
 
-
-    if (newHealth <= 0) {
-      const gameOverMsg = "Your health reached 0. Game Over.";
-      setGameState(prev => ({
-        ...prev,
-        playerStats: { ...prev.playerStats, health: 0, cash: newCash, reputation: newReputation, rank: newRank, currentLocation: newLocation, daysPassed: newDaysPassed }, // Update other stats before game over
-        isGameOver: true,
-        isLoadingNextDay: false,
-      }));
-      toast({ title: "Game Over", description: gameOverMsg, variant: "destructive" });
-      addLogEntry('game_over', gameOverMsg);
-      return;
-    }
-
     setGameState(prev => ({
       ...prev,
-      playerStats: {
-        ...prev.playerStats,
-        daysPassed: newDaysPassed,
-        health: newHealth,
-        cash: newCash,
-        reputation: newReputation,
-        rank: newRank,
-        currentLocation: newLocation,
-      },
+      playerStats: currentStats,
       marketPrices: newMarketPrices,
       localHeadlines: newLocalHeadlines,
       isLoadingNextDay: false,
