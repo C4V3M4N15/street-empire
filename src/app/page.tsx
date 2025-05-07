@@ -1,5 +1,7 @@
+
 "use client";
 
+import { useEffect } from 'react'; // Added useEffect
 import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
 import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
@@ -9,8 +11,14 @@ import { BattleScreen } from '@/components/game/BattleScreen';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; // Added
+import { useRouter } from 'next/navigation'; // Added
+import Link from 'next/link'; // Added
 
 export default function StreetEmpirePage() {
+  const { user, loading: authLoading } = useAuth(); // Added
+  const router = useRouter(); // Added
+
   const {
     playerStats,
     marketPrices,
@@ -27,7 +35,7 @@ export default function StreetEmpirePage() {
     buyDrug,
     sellDrug,
     buyWeapon,
-    buyAmmoForEquippedWeapon, // Added
+    buyAmmoForEquippedWeapon,
     buyArmor,
     buyHealingItem,
     buyCapacityUpgrade,
@@ -35,24 +43,45 @@ export default function StreetEmpirePage() {
     resetGame,
     travelToLocation,
     fetchHeadlinesForLocation,
-    // Battle State & Actions
     isBattleActive,
     currentEnemy,
     battleLog,
     battleMessage,
     handlePlayerBattleAction,
     endBattleScreen,
-  } = useGameLogic();
+  } = useGameLogic(user); // Pass user to useGameLogic if it needs it for initialization
 
-  if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) {
+  // Effect to redirect if not authenticated and not loading
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+
+  if (authLoading || (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000 && !user)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
         <Loader2 className="h-16 w-16 animate-spin text-accent mb-4" />
         <h1 className="text-3xl font-bold mb-2">Street Empire</h1>
-        <p className="text-lg text-muted-foreground">Loading game data...</p>
+        <p className="text-lg text-muted-foreground">Loading...</p>
       </div>
     );
   }
+  
+  // If auth is done loading and there's still no user, show login prompt (should be handled by redirect mostly)
+  if (!authLoading && !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
+         <h1 className="text-3xl font-bold mb-2">Street Empire</h1>
+        <p className="text-lg text-muted-foreground mb-4">Please log in to play.</p>
+        <Button asChild>
+            <Link href="/login">Go to Login</Link>
+        </Button>
+      </div>
+    );
+  }
+
 
   if (isBattleActive && currentEnemy) {
     return (
@@ -71,9 +100,19 @@ export default function StreetEmpirePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
       <header className="w-full max-w-3xl mb-6 text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-primary-foreground tracking-tight">
-          Street Empire
-        </h1>
+        <div className="flex justify-between items-center w-full">
+          <h1 className="text-4xl sm:text-5xl font-bold text-primary-foreground tracking-tight">
+            Street Empire
+          </h1>
+          {user && (
+            <Button variant="outline" size="sm" onClick={async () => {
+              await auth.signOut();
+              router.push('/login');
+            }}>
+              Logout
+            </Button>
+          )}
+        </div>
         <p className="text-md sm:text-lg text-muted-foreground mt-1">
           Build your empire, one deal at a time.
         </p>
@@ -97,7 +136,7 @@ export default function StreetEmpirePage() {
             buyDrug={buyDrug}
             sellDrug={sellDrug}
             buyWeapon={buyWeapon}
-            buyAmmoForEquippedWeapon={buyAmmoForEquippedWeapon} // Passed
+            buyAmmoForEquippedWeapon={buyAmmoForEquippedWeapon}
             buyArmor={buyArmor}
             buyHealingItem={buyHealingItem}
             buyCapacityUpgrade={buyCapacityUpgrade}

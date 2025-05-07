@@ -10,21 +10,21 @@ import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgra
 import { getTodaysEvents, drugCategories, resetUniqueEvents } from '@/services/eventService';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import type { User } from 'firebase/auth'; // Added
 
 export const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
 const PLAYER_BASE_ATTACK = 5;
 const PLAYER_BASE_DEFENSE = 2;
 const MAX_PLAYER_HEALTH = 100;
 
-// Combat constants
 const MISS_CHANCE = 0.15;
 const CRITICAL_HIT_CHANCE = 0.10;
 const CRITICAL_HIT_MULTIPLIER = 1.5;
 const FLEE_CHANCE_BASE = 0.33;
-const ENEMY_INITIATIVE_CHANCE = 0.30; // 30% chance enemy attacks first in some scenarios
+const ENEMY_INITIATIVE_CHANCE = 0.30;
 
-const INITIAL_PLAYER_STATS: PlayerStats = {
-  name: 'Player1',
+const createInitialPlayerStats = (user: User | null): PlayerStats => ({
+  name: user?.displayName || 'Player1', // Use Firebase display name or fallback
   health: MAX_PLAYER_HEALTH,
   cash: 1000,
   inventory: {},
@@ -34,11 +34,12 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   rank: 'Rookie',
   maxInventoryCapacity: 10,
   equippedWeapon: null,
-  equippedWeaponAmmo: null, // Initialize ammo as null
+  equippedWeaponAmmo: null,
   equippedArmor: null,
   purchasedUpgradeIds: [],
   purchasedArmorIds: [],
-};
+});
+
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
   if (!event || !event.effects) return prices;
@@ -62,12 +63,12 @@ const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null):
 };
 
 
-export function useGameLogic() {
+export function useGameLogic(user: User | null) { // Accept user
   const [gameState, setGameState] = useState<GameState>(() => {
     const initialHeatLevels: Record<string, number> = {};
     NYC_LOCATIONS.forEach(loc => initialHeatLevels[loc] = 0);
     return {
-      playerStats: INITIAL_PLAYER_STATS,
+      playerStats: createInitialPlayerStats(user), // Initialize with user
       marketPrices: [],
       previousMarketPrices: [],
       localHeadlines: [],
@@ -92,6 +93,20 @@ export function useGameLogic() {
 
   const { toast } = useToast();
 
+  // Update player name if user's displayName changes (e.g., after signup profile update)
+  useEffect(() => {
+    if (user?.displayName && user.displayName !== gameState.playerStats.name) {
+      setGameState(prev => ({
+        ...prev,
+        playerStats: {
+          ...prev.playerStats,
+          name: user.displayName!,
+        }
+      }));
+    }
+  }, [user, gameState.playerStats.name]);
+
+
   const addLogEntry = useCallback((type: LogEventType, message: string, isBattleLog = false) => {
     const entry = { id: uuidv4(), timestamp: new Date().toISOString(), type, message };
     setGameState(prev => ({
@@ -113,7 +128,7 @@ export function useGameLogic() {
         } else if (headline.affectedCategories && headline.affectedCategories.length > 0) {
           for (const catKey of headline.affectedCategories) {
             const drugsInCat = drugCategories[catKey as keyof typeof drugCategories];
-            if (drugsInCat?.includes(drugPrice.drug)) { // Changed categoryDrugs to drugsInCat
+            if (drugsInCat?.includes(drugPrice.drug)) {
               applyThisHeadline = true;
               break;
             }
@@ -131,21 +146,28 @@ export function useGameLogic() {
   }, []);
 
   const fetchInitialData = useCallback(async () => {
+    // Only fetch if user is available
+    if (!user) {
+        setGameState(prev => ({...prev, isLoadingMarket: false})); // Ensure loading stops if no user
+        return;
+    }
+
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
-    resetUniqueEvents();
+    resetUniqueEvents(); // Reset unique events for a new game session
     try {
-      const rawDay0Prices = await getMarketPrices(INITIAL_PLAYER_STATS.currentLocation, 0, {}); // Pass 0 days, empty heat
+      const initialPlayerStats = createInitialPlayerStats(user);
+      const rawDay0Prices = await getMarketPrices(initialPlayerStats.currentLocation, 0, {});
       const [headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
-        getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation),
+        getLocalHeadlines(initialPlayerStats.currentLocation),
         getShopWeapons(),
         getShopArmor(),
         getShopHealingItems(),
         getShopCapacityUpgrades(),
-        getTodaysEvents(INITIAL_PLAYER_STATS.daysPassed, gameState.boroughHeatLevels),
+        getTodaysEvents(initialPlayerStats.daysPassed, gameState.boroughHeatLevels),
       ]);
 
       let finalDay0PricesWithImpacts = applyHeadlineImpacts(rawDay0Prices, headlines);
-      const eventInPlayerLocation = dailyEvents[INITIAL_PLAYER_STATS.currentLocation];
+      const eventInPlayerLocation = dailyEvents[initialPlayerStats.currentLocation];
       finalDay0PricesWithImpacts = applyEventPriceModifiers(finalDay0PricesWithImpacts, eventInPlayerLocation);
 
       const fictionalDayMinus1Prices = ALL_DRUGS.map(d => ({
@@ -176,9 +198,10 @@ export function useGameLogic() {
           addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
         }
       }
-
+      
       setGameState(prev => ({
         ...prev,
+        playerStats: initialPlayerStats, // Set the fresh player stats
         marketPrices: day0MarketPricesWithDirection,
         previousMarketPrices: finalDay0PricesWithImpacts.map(({priceChangeDirection, ...rest}) => rest),
         localHeadlines: headlines,
@@ -190,7 +213,7 @@ export function useGameLogic() {
         boroughHeatLevels: initialBoroughHeat,
         isLoadingMarket: false,
       }));
-      addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market, shop, and events loaded.`);
+      addLogEntry('info', `Game started in ${initialPlayerStats.currentLocation}. Market, shop, and events loaded.`);
     } catch (error) {
       console.error("Failed to fetch initial game data:", error);
       setTimeout(() => {
@@ -200,15 +223,19 @@ export function useGameLogic() {
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry, applyHeadlineImpacts]);
+  }, [toast, addLogEntry, applyHeadlineImpacts, user]); // Added user to dependency array
+
 
   useEffect(() => {
-    fetchInitialData();
+    if (user) { // Only fetch if user is logged in
+        fetchInitialData();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]); // Rerun fetchInitialData if user changes (e.g., on login)
 
 
   const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    if (!user) return; // Guard against actions if no user
     setGameState(prev => {
       const currentStats = prev.playerStats;
       const cost = quantity * price;
@@ -242,9 +269,10 @@ export function useGameLogic() {
       const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
       return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash - cost, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
   const sellDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    if (!user) return;
     setGameState(prev => {
       const currentStats = prev.playerStats;
       const currentItem = currentStats.inventory[drugName];
@@ -285,9 +313,10 @@ export function useGameLogic() {
       const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
       return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash + earnings, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
   const buyWeapon = useCallback((weaponToBuy: Weapon) => {
+    if (!user) return;
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.cash < weaponToBuy.price) {
@@ -306,8 +335,8 @@ export function useGameLogic() {
       let newEquippedWeaponAmmo: PlayerStats['equippedWeaponAmmo'] = null;
       if (weaponToBuy.isFirearm && weaponToBuy.clipSize && weaponToBuy.clipSize > 0) {
         newEquippedWeaponAmmo = {
-          currentInClip: weaponToBuy.clipSize, // Comes with one full clip
-          reserveAmmo: weaponToBuy.clipSize * 2, // And two full clips in reserve
+          currentInClip: weaponToBuy.clipSize,
+          reserveAmmo: weaponToBuy.clipSize * 2,
         };
       }
 
@@ -318,9 +347,10 @@ export function useGameLogic() {
       addLogEntry('shop_weapon_purchase', msg);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - weaponToBuy.price, equippedWeapon: weaponToBuy, equippedWeaponAmmo: newEquippedWeaponAmmo } };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
   const buyAmmoForEquippedWeapon = useCallback(() => {
+    if (!user) return;
     setGameState(prev => {
       const cs = prev.playerStats;
       if (!cs.equippedWeapon || !cs.equippedWeapon.isFirearm || !cs.equippedWeapon.clipSize) {
@@ -331,7 +361,7 @@ export function useGameLogic() {
       }
 
       const weapon = cs.equippedWeapon;
-      const ammoCost = Math.round(weapon.price * 0.10); // 10% of gun price for one clip
+      const ammoCost = Math.round(weapon.price * 0.10);
 
       if (cs.cash < ammoCost) {
         setTimeout(() => {
@@ -352,9 +382,8 @@ export function useGameLogic() {
 
       let newCurrentInClip = currentAmmoState.currentInClip;
       let newReserveAmmo = currentAmmoState.reserveAmmo;
-      let ammoToDistribute = weapon.clipSize; // One full clip's worth of ammo
+      let ammoToDistribute = weapon.clipSize; 
 
-      // Fill current clip first
       const neededForCurrent = weapon.clipSize - newCurrentInClip;
       if (neededForCurrent > 0) {
         const fillCurrentAmount = Math.min(neededForCurrent, ammoToDistribute);
@@ -362,7 +391,6 @@ export function useGameLogic() {
         ammoToDistribute -= fillCurrentAmount;
       }
 
-      // Fill reserve ammo
       if (ammoToDistribute > 0) {
         const spaceInReserve = maxReserveAmmo - newReserveAmmo;
         const fillReserveAmount = Math.min(spaceInReserve, ammoToDistribute);
@@ -375,7 +403,7 @@ export function useGameLogic() {
          setTimeout(() => {
           toast({ title: "Max Ammo", description: `${weapon.name} is already at maximum ammo capacity.` });
         },0);
-        return prev; // Should have been caught by the earlier check, but good safeguard
+        return prev;
       }
 
 
@@ -397,10 +425,11 @@ export function useGameLogic() {
         },
       };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
 
   const buyArmor = useCallback((armorToBuy: Armor) => {
+    if (!user) return;
     setGameState(prev => {
       const cs = prev.playerStats;
 
@@ -442,10 +471,11 @@ export function useGameLogic() {
 
       return { ...prev, playerStats: newPlayerStats };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
 
   const buyHealingItem = useCallback((itemToBuy: HealingItem) => {
+    if (!user) return;
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.cash < itemToBuy.price) {
@@ -488,9 +518,10 @@ export function useGameLogic() {
       addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - itemToBuy.price, health: newHealth } };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
   const buyCapacityUpgrade = useCallback((upgradeToBuy: CapacityUpgrade) => {
+    if (!user) return;
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.purchasedUpgradeIds.includes(upgradeToBuy.id)) {
@@ -512,9 +543,10 @@ export function useGameLogic() {
       addLogEntry('shop_capacity_upgrade', msg);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - upgradeToBuy.price, maxInventoryCapacity: cs.maxInventoryCapacity + upgradeToBuy.capacityIncrease, purchasedUpgradeIds: [...cs.purchasedUpgradeIds, upgradeToBuy.id] } };
     });
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, user]);
 
   const travelToLocation = useCallback(async (targetLocation: string) => {
+    if (!user) return;
     const currentLoc = gameState.playerStats.currentLocation;
     if (currentLoc === targetLocation) {
       setTimeout(() => {
@@ -574,9 +606,10 @@ export function useGameLogic() {
       }, 0);
       setGameState(prev => ({...prev, isLoadingMarket: false}));
     }
-  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, gameState.marketPrices, gameState.playerStats.daysPassed, gameState.boroughHeatLevels]);
+  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, gameState.marketPrices, gameState.playerStats.daysPassed, gameState.boroughHeatLevels, user]);
 
   const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
+    if (!user) return [];
     try { return await getLocalHeadlines(location); }
     catch (e) {
       console.error(e);
@@ -585,9 +618,10 @@ export function useGameLogic() {
       }, 0);
       return [];
     }
-  }, [toast]);
+  }, [toast, user]);
 
  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
+    if (!user) return;
     setGameState(prev => {
       if (prev.isBattleActive) return prev;
 
@@ -637,9 +671,10 @@ export function useGameLogic() {
         battleMessage: null,
       };
     });
-  }, [addLogEntry]);
+  }, [addLogEntry, user]);
 
   const handlePlayerBattleAction = useCallback((action: 'attack' | 'flee') => {
+    if (!user) return;
     setGameState(prev => {
       if (!prev.isBattleActive || !prev.currentEnemy || prev.battleMessage) return prev;
 
@@ -662,19 +697,17 @@ export function useGameLogic() {
         let canAttack = true;
         if (newPlayerStats.equippedWeapon?.isFirearm) {
           if (!newPlayerStats.equippedWeaponAmmo || newPlayerStats.equippedWeaponAmmo.currentInClip <= 0) {
-            // Try to reload
             if (newPlayerStats.equippedWeaponAmmo && newPlayerStats.equippedWeaponAmmo.reserveAmmo > 0 && newPlayerStats.equippedWeapon.clipSize) {
               const bulletsToReload = Math.min(newPlayerStats.equippedWeapon.clipSize, newPlayerStats.equippedWeaponAmmo.reserveAmmo);
               newPlayerStats.equippedWeaponAmmo.currentInClip = bulletsToReload;
               newPlayerStats.equippedWeaponAmmo.reserveAmmo -= bulletsToReload;
               addBattleLog(`Reloading ${newPlayerStats.equippedWeapon.name}! (${bulletsToReload} rounds)`);
-              // Attack proceeds after reload
             } else {
               addBattleLog(`Out of ammo for ${newPlayerStats.equippedWeapon.name}!`);
-              canAttack = false; // Cannot attack this turn
+              canAttack = false;
             }
           } else if (newPlayerStats.equippedWeaponAmmo) {
-            newPlayerStats.equippedWeaponAmmo.currentInClip -= 1; // Consume one bullet
+            newPlayerStats.equippedWeaponAmmo.currentInClip -= 1;
           }
         }
 
@@ -699,7 +732,7 @@ export function useGameLogic() {
         if (newPlayerStats.health < MAX_PLAYER_HEALTH * 0.3) actualFleeChance += 0.25;
         const enemyStrength = newEnemyStats.attack + newEnemyStats.defense;
         const playerStrength = playerEffectiveAttack + playerEffectiveDefense;
-        if (enemyStrength > playerStrength * 1.2) actualFleeChance -= 0.15; // Harder to flee stronger enemy
+        if (enemyStrength > playerStrength * 1.2) actualFleeChance -= 0.15;
 
         actualFleeChance = Math.max(0.10, Math.min(0.90, actualFleeChance));
 
@@ -709,11 +742,9 @@ export function useGameLogic() {
           battleEnded = true;
         } else {
           addBattleLog("You failed to escape!");
-          // Enemy gets a free attack if flee fails
         }
       }
 
-      // Enemy's turn if battle didn't end and player didn't just successfully flee
       if (!battleEnded) {
         if (Math.random() < MISS_CHANCE) {
           addBattleLog(`${newEnemyStats.name} tries to attack you, but misses!`);
@@ -760,14 +791,15 @@ export function useGameLogic() {
           battleLog: newBattleLog.slice(-20),
           battleMessage: finalBattleMessage,
           isGameOver: finalIsGameOver,
-          isBattleActive: true, // Keep active until player clicks "Continue"
+          isBattleActive: true,
         };
       }
       return { ...prev, playerStats: newPlayerStats, currentEnemy: newEnemyStats, battleLog: newBattleLog.slice(-20) };
     });
-  }, [addLogEntry]);
+  }, [addLogEntry, user]);
 
   const endBattleScreen = useCallback(() => {
+    if (!user) return;
     setGameState(prev => {
       const wasGameOverFromBattle = prev.playerStats.health <= 0 && prev.isBattleActive && prev.battleMessage !== "You managed to escape!";
       return {
@@ -779,9 +811,10 @@ export function useGameLogic() {
         isGameOver: prev.isGameOver || wasGameOverFromBattle,
       };
     });
-  }, []);
+  }, [user]);
 
   const handleNextDay = useCallback(async () => {
+    if (!user) return;
     if (gameState.isGameOver || gameState.isBattleActive) return;
     setGameState(prev => ({ ...prev, isLoadingNextDay: true, gameMessage: null, previousMarketPrices: prev.marketPrices.map(({priceChangeDirection, ...rest}) => rest) }));
 
@@ -905,14 +938,14 @@ export function useGameLogic() {
     }
 
     const heatInCurrentLocation = eventProcessedHeatLevels[currentStats.currentLocation] || 0;
-    const randomEncounterChance = 0.05 + (heatInCurrentLocation * 0.07); // Reduced base chance, slightly increased heat impact
+    const randomEncounterChance = 0.05 + (heatInCurrentLocation * 0.07);
 
     if (!combatTriggeredByEvent && !gameState.isBattleActive && currentStats.health > 0 && currentStats.daysPassed > 3 && Math.random() < randomEncounterChance) {
       const opponentTypes = ["police", "gang", "fiend"] as const;
       let selectedOpponentType: 'police' | 'gang' | 'fiend';
       const randomRoll = Math.random();
-      if (randomRoll < (0.20 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police'; // Slightly lower police chance, higher heat impact
-      else if (randomRoll < (0.55 + heatInCurrentLocation * 0.05)) selectedOpponentType = 'gang'; // Adjusted gang chance
+      if (randomRoll < (0.20 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police';
+      else if (randomRoll < (0.55 + heatInCurrentLocation * 0.05)) selectedOpponentType = 'gang';
       else selectedOpponentType = 'fiend';
       addLogEntry('info', `Random encounter with ${selectedOpponentType} in ${currentStats.currentLocation}. Heat: ${heatInCurrentLocation}.`);
       startBattle(selectedOpponentType);
@@ -954,25 +987,26 @@ export function useGameLogic() {
           isLoadingNextDay: false,
           playerActivityInBoroughsThisDay: {},
         }));
-    } else { // If battle was triggered by event or random encounter, some state already set by startBattle
+    } else {
        setGameState(prev => ({
         ...prev,
-        playerStats: currentStats, // Ensure player stats are up-to-date from pre-battle event impacts
-        marketPrices: currentMarketPrices, // Update market even if battle starts
+        playerStats: currentStats,
+        marketPrices: currentMarketPrices,
         localHeadlines: newLocalHeadlines,
         activeBoroughEvents: newDailyEvents,
         boroughHeatLevels: eventProcessedHeatLevels,
-        isLoadingNextDay: false, // Battle will handle its own loading state for actions
+        isLoadingNextDay: false,
         playerActivityInBoroughsThisDay: {},
       }));
     }
-  }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle, applyHeadlineImpacts, gameState.previousMarketPrices]);
+  }, [gameState, toast, addLogEntry, startBattle, applyHeadlineImpacts, user]);
 
   const resetGame = useCallback(() => {
+    if (!user) return;
      const initialHeatLevelsReset: Record<string, number> = {};
      NYC_LOCATIONS.forEach(loc => initialHeatLevelsReset[loc] = 0);
     setGameState({
-      playerStats: INITIAL_PLAYER_STATS,
+      playerStats: createInitialPlayerStats(user), // Re-initialize with user
       marketPrices: [], previousMarketPrices: [], localHeadlines: [], eventLog: [],
       isLoadingNextDay: false, isLoadingMarket: true, isGameOver: false, gameMessage: null,
       availableWeapons: [], availableArmor: [], availableHealingItems: [], availableCapacityUpgrades: [],
@@ -981,7 +1015,7 @@ export function useGameLogic() {
     });
     addLogEntry('info', 'Game reset.');
     fetchInitialData();
-  }, [fetchInitialData, addLogEntry]);
+  }, [fetchInitialData, addLogEntry, user]);
 
   return {
     ...gameState,
@@ -990,5 +1024,3 @@ export function useGameLogic() {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
-
-

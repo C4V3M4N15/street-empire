@@ -1,8 +1,9 @@
+
 "use client";
 
 import type { PlayerStats } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck, PackagePlus, Target } from 'lucide-react'; // Added Target for ammo
+import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag, Sword, Zap, ShieldHalf, ShieldCheck, PackagePlus, Target } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -10,6 +11,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext'; // Added
 
 interface PlayerStatsCardProps {
   playerStats: PlayerStats;
@@ -29,6 +31,9 @@ const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string
 );
 
 export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
+  const { user } = useAuth(); // Added
+  const playerName = user?.displayName || playerStats.name; // Use auth name or fallback
+
   const inventoryEntries = Object.entries(playerStats.inventory);
   const hasInventory = inventoryEntries.length > 0;
   const totalInventoryUnits = inventoryEntries.reduce((sum, [, item]) => sum + item.quantity, 0);
@@ -50,7 +55,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     <Card className="shadow-lg">
       <CardHeader className="pb-3 pt-4">
         <CardTitle className="flex items-center text-2xl">
-          <User className="mr-2 h-7 w-7 text-primary-foreground" /> {playerStats.name}'s Status
+          <User className="mr-2 h-7 w-7 text-primary-foreground" /> {playerName}'s Status {/* Updated */}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0.5 p-4 pt-0">
