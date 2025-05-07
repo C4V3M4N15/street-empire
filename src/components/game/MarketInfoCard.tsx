@@ -34,7 +34,7 @@ interface MarketInfoCardProps {
   buyHealingItem: (item: HealingItem) => void;
   buyCapacityUpgrade: (upgrade: CapacityUpgrade) => void;
   travelToLocation: (location: string) => void;
-  fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
+  // fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>; // No longer needed by NycMap
 }
 
 const HeadlineItem: React.FC<{ headline: string; isEvent?: boolean }> = ({ headline, isEvent }) => {
@@ -71,7 +71,7 @@ export function MarketInfoCard({
   buyHealingItem,
   buyCapacityUpgrade,
   travelToLocation,
-  fetchHeadlinesForLocation
+  // fetchHeadlinesForLocation // Removed as it's not directly passed to NycMap anymore
 }: MarketInfoCardProps) {
   const [transactionQuantities, setTransactionQuantities] = React.useState<{ [drugName: string]: string }>({});
   const currentEventInLocation = activeBoroughEvents[playerStats.currentLocation];
@@ -149,7 +149,7 @@ export function MarketInfoCard({
                 </TabsTrigger>
             </TabsList>
         </CardHeader>
-        <TabsContent value="market" className="p-4 pt-3"> {/* Removed min-height */}
+        <TabsContent value="market" className="p-4 pt-3">
             {(isLoading && marketPrices.length === 0) ? (
               renderSkeletons()
             ) : (
@@ -279,7 +279,7 @@ export function MarketInfoCard({
             <NycMap
               currentLocation={playerStats.currentLocation}
               onTravel={travelToLocation}
-              fetchHeadlinesForLocation={fetchHeadlinesForLocation}
+              dailyEvents={activeBoroughEvents}
               isLoading={isLoading}
             />
           </CardContent>
@@ -464,3 +464,4 @@ export function MarketInfoCard({
     </Card>
   );
 }
+

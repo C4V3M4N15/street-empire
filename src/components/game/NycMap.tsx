@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 interface NycMapProps {
   currentLocation: string;
   onTravel: (location: string) => void;
-  dailyEvents: Record<string, GameEvent | null>;
+  dailyEvents: Record<string, GameEvent | null>; // Events for all boroughs
   isLoading: boolean;
 }
 
@@ -76,19 +76,8 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
     }
   };
 
-  const handleMouseEnter = useCallback(async (boroughName: string) => {
+  const handleMouseEnter = useCallback((boroughName: string) => {
     setHoveredBorough(boroughName);
-    /*
-    try {
-      const fetchedHeadlines = await fetchHeadlinesForLocation(boroughName);
-      setHeadlines(fetchedHeadlines);
-    } catch (error) {
-      console.error(`Failed to fetch headlines for ${boroughName}:`, error);
-      setHeadlines([]);
-    } finally {
-      setIsLoadingHeadlines(false);
-    }
-    */
   }, []);
 
   const handleMouseLeave = () => {
@@ -98,11 +87,11 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
   return (
     <div className="space-y-4">
       <div 
-        className="relative w-full aspect-[350/300] bg-blue-900/30 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/30" // Added bg-blue-900/30 for background
-        data-ai-hint="new york city map" // Added data-ai-hint
+        className="relative w-full aspect-[350/300] bg-blue-900/30 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/30"
+        data-ai-hint="new york city map"
       >
         <svg 
-            viewBox="0 0 300 300" // Adjusted viewBox to better fit the paths
+            viewBox="0 0 300 300" 
             className="w-full h-full" 
             aria-labelledby="nyc-map-title"
             preserveAspectRatio="xMidYMid meet"
@@ -119,11 +108,11 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
                   className={cn(
                     borough.fillColorClass,
                     borough.strokeColorClass,
-                    'stroke-[2px]', // Adjusted stroke width
+                    'stroke-[2px]', 
                     'transition-all duration-200 ease-in-out',
                     'cursor-pointer',
-                    isCurrent ? 'opacity-100 scale-[1.02] stroke-white' : 'opacity-70 hover:opacity-90', // Highlight current with white stroke
-                    isHovered && !isCurrent ? 'opacity-95 scale-[1.03] stroke-yellow-300' : '', // Highlight hovered with yellow stroke
+                    isCurrent ? 'opacity-100 scale-[1.02] stroke-white' : 'opacity-70 hover:opacity-90', 
+                    isHovered && !isCurrent ? 'opacity-95 scale-[1.03] stroke-yellow-300' : '', 
                     isGameLoading && !isCurrent ? 'cursor-not-allowed opacity-50' : '',
                     isCurrent && isGameLoading ? 'cursor-not-allowed' : ''
                   )}
@@ -148,10 +137,10 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
                 </text>
                 {isCurrent && (
                   <MapPin 
-                    className="text-yellow-300 animate-pulse" // Make current location pin more prominent
-                    size={18} // Slightly larger
-                    x={borough.labelPosition.x - 9} // Adjust to center icon
-                    y={borough.labelPosition.y - 22} // Position above label
+                    className="text-yellow-300 animate-pulse" 
+                    size={18} 
+                    x={borough.labelPosition.x - 9} 
+                    y={borough.labelPosition.y - 22} 
                     strokeWidth={2.5}
                     style={{ filter: 'drop-shadow(0px 0px 3px rgba(0,0,0,1))' }}
                   />
@@ -164,14 +153,14 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
 
       <div className="p-3 border rounded-md bg-card min-h-[120px]">
         <h4 className="text-sm font-semibold mb-2 text-primary-foreground">
-          {hoveredBorough ? `Headlines in ${hoveredBorough}:` : 'Hover over a borough to see headlines'}
+          {hoveredBorough ? `Events in ${hoveredBorough}:` : 'Hover over a borough to see current events'}
         </h4>
         {isGameLoading ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-6 w-6 animate-spin text-accent" />
             <span className="ml-2 text-sm">Loading game day...</span>
           </div>
-        ) : hoveredBorough && dailyEvents[hoveredBorough] ? (
+        ) : hoveredBorough && dailyEvents && dailyEvents[hoveredBorough] ? (
           <div className="max-h-24 overflow-y-auto pr-2 space-y-1">
             <HeadlineItem event={dailyEvents[hoveredBorough]!} />
           </div>
@@ -182,9 +171,10 @@ export function NycMap({ currentLocation, onTravel, dailyEvents, isLoading: isGa
                 <CheckCircle className="h-4 w-4 mr-2"/> You are currently in {currentLocation}.
              </div>
         ) : (
-          <p className="text-xs text-muted-foreground pt-2">Travel to a new borough to expand your empire, or to see todays events.</p>
+          <p className="text-xs text-muted-foreground pt-2">Travel to a new borough to expand your empire, or hover to see today's events.</p>
         )}
       </div>
     </div>
   );
 }
+

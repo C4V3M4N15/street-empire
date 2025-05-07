@@ -43,7 +43,6 @@ const createInitialPlayerStats = (user: User | null): PlayerStats => ({
 interface DrugPriceWithLocation extends DrugPrice {
   location: string;
 }
-});
 
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
@@ -586,16 +585,6 @@ export function useGameLogic(user: User | null) { // Accept user
     }
   }, [toast, addLogEntry, gameState, applyHeadlineImpacts, user]);
 
-  const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
-    if (!user) return []; 
-    try { return await getLocalHeadlines(location); }
-    catch (e) {
-      console.error(e);
-      if (isMounted.current) setTimeout(() => toast({ title: "Headline Error", description: `Could not fetch headlines for ${location}.`, variant: "destructive" }), 0);
-      return [];
-    }
-  }, [toast, user]);
-
  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     if (!user || gameState.playerStats.daysPassed <= 10) { 
       if (gameState.playerStats.daysPassed <= 10 && isMounted.current) {
@@ -1039,7 +1028,7 @@ export function useGameLogic(user: User | null) { // Accept user
   return {
     ...gameState,
     buyDrug, sellDrug, buyWeapon, buyArmor, buyHealingItem, buyCapacityUpgrade, buyAmmoForEquippedWeapon,
-    handleNextDay, resetGame, travelToLocation, fetchHeadlinesForLocation,
+    handleNextDay, resetGame, travelToLocation,
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
