@@ -29,19 +29,19 @@ export interface LocalHeadline {
 
 const ALL_DRUGS = [
   { name: 'Weed', basePrice: 300, volatility: 0.3 },
-  { name: 'Cocaine', basePrice: 18000, volatility: 0.5 }, // Was 25000
-  { name: 'Heroin', basePrice: 12000, volatility: 0.45 }, // Was 15000
+  { name: 'Cocaine', basePrice: 13000, volatility: 0.5 }, // Was 18000
+  { name: 'Heroin', basePrice: 9000, volatility: 0.45 }, // Was 12000
   { name: 'MDMA', basePrice: 1500, volatility: 0.35 },
   { name: 'LSD', basePrice: 800, volatility: 0.4 },
-  { name: 'Meth', basePrice: 6000, volatility: 0.55 }, // Was 8000
+  { name: 'Meth', basePrice: 4500, volatility: 0.55 }, // Was 6000
   { name: 'Mushrooms', basePrice: 500, volatility: 0.3 },
-  { name: 'Opium', basePrice: 7000, volatility: 0.4 }, // Was 10000
+  { name: 'Opium', basePrice: 5000, volatility: 0.4 }, // Was 7000
   { name: 'Ketamine', basePrice: 2000, volatility: 0.38 },
   { name: 'PCP', basePrice: 1200, volatility: 0.42 },
   { name: 'Xanax', basePrice: 50, volatility: 0.25 },
   { name: 'Valium', basePrice: 40, volatility: 0.2 },
   { name: 'Steroids', basePrice: 300, volatility: 0.3 },
-  { name: 'Fentanyl', basePrice: 20000, volatility: 0.6 }, // Was 50000
+  { name: 'Fentanyl', basePrice: 15000, volatility: 0.6 }, // Was 20000
   { name: 'Crack', basePrice: 1000, volatility: 0.5 },
 ];
 
@@ -138,3 +138,4 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
 
   return headlines;
 }
+
