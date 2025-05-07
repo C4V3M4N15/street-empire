@@ -1,11 +1,10 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useState, useCallback } from 'react';
 import type { LocalHeadline } from '@/services/market';
-import { Loader2, TrendingUp, AlertTriangle, Pin, CheckCircle } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, Pin, CheckCircle, MapPin } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface NycMapProps {
   currentLocation: string;
@@ -14,18 +13,44 @@ interface NycMapProps {
   isLoading: boolean;
 }
 
+// Simplified SVG path data for NYC boroughs
+// viewBox="0 0 350 300"
 const boroughs = [
-  // Coordinates and dimensions adjusted to approximate the provided map
-  // 1: Manhattan (Green)
-  { name: 'Manhattan', top: '15%', left: '42%', width: '12%', height: '55%', bgColor: 'bg-green-500/70', hoverBgColor: 'hover:bg-green-600/90', borderColor: 'border-green-700' },
-  // 2: Brooklyn (Yellow)
-  { name: 'Brooklyn', top: '50%', left: '48%', width: '20%', height: '30%', bgColor: 'bg-yellow-400/70', hoverBgColor: 'hover:bg-yellow-500/90', borderColor: 'border-yellow-600' },
-  // 3: Queens (Orange)
-  { name: 'Queens', top: '30%', left: '60%', width: '30%', height: '45%', bgColor: 'bg-orange-500/70', hoverBgColor: 'hover:bg-orange-600/90', borderColor: 'border-orange-700' },
-  // 4: The Bronx (Red)
-  { name: 'The Bronx', top: '5%', left: '48%', width: '22%', height: '25%', bgColor: 'bg-red-500/70', hoverBgColor: 'hover:bg-red-600/90', borderColor: 'border-red-700' },
-  // 5: Staten Island (Purple)
-  { name: 'Staten Island', top: '60%', left: '22%', width: '18%', height: '28%', bgColor: 'bg-purple-500/70', hoverBgColor: 'hover:bg-purple-600/90', borderColor: 'border-purple-700' },
+  {
+    name: 'Manhattan',
+    pathData: "M135,40 L125,150 L130,220 L140,220 L145,150 L135,40 Z",
+    fillColorClass: 'fill-green-500',
+    strokeColorClass: 'stroke-green-700',
+    labelPosition: { x: 135, y: 130 },
+  },
+  {
+    name: 'Brooklyn',
+    pathData: "M140,180 L135,230 L160,260 L190,240 L180,210 L140,180 Z",
+    fillColorClass: 'fill-yellow-400',
+    strokeColorClass: 'stroke-yellow-600',
+    labelPosition: { x: 160, y: 220 },
+  },
+  {
+    name: 'Queens',
+    pathData: "M180,120 L175,200 L190,235 L240,220 L250,150 L220,110 L180,120 Z",
+    fillColorClass: 'fill-orange-500',
+    strokeColorClass: 'stroke-orange-700',
+    labelPosition: { x: 215, y: 170 },
+  },
+  {
+    name: 'The Bronx',
+    pathData: "M140,10 L145,60 L190,70 L200,30 L170,5 L140,10 Z",
+    fillColorClass: 'fill-red-500',
+    strokeColorClass: 'stroke-red-700',
+    labelPosition: { x: 170, y: 40 },
+  },
+  {
+    name: 'Staten Island',
+    pathData: "M70,220 L60,250 L90,280 L110,260 L100,230 L70,220 Z",
+    fillColorClass: 'fill-purple-500',
+    strokeColorClass: 'stroke-purple-700',
+    labelPosition: { x: 85, y: 250 },
+  },
 ];
 
 const HeadlineItem: React.FC<{ headline: LocalHeadline }> = ({ headline }) => {
@@ -73,7 +98,7 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
   };
 
   const handleTravelClick = (boroughName: string) => {
-    if (boroughName !== currentLocation) {
+    if (boroughName !== currentLocation && !isGameLoading) {
       onTravel(boroughName);
     }
   };
@@ -81,28 +106,66 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
   return (
     <div className="space-y-4">
       <div 
-        className="relative w-full aspect-[4/3] bg-blue-300/30 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/50"
-        data-ai-hint="new york city map" // Water background color
+        className="relative w-full aspect-[350/300] bg-blue-300/10 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/30"
+        data-ai-hint="new york city map"
       >
-        {boroughs.map((borough) => (
-          <button
-            key={borough.name}
-            className={`absolute p-1 sm:p-2 border-2 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring
-              ${currentLocation === borough.name 
-                ? `${borough.bgColor.replace('/70', '/90')} ${borough.borderColor} text-white shadow-xl z-10 ring-2 ring-offset-2 ring-white` 
-                : `${borough.bgColor} ${borough.borderColor} text-white ${borough.hoverBgColor}`}
-            `}
-            style={{ top: borough.top, left: borough.left, width: borough.width, height: borough.height }}
-            onMouseEnter={() => handleMouseEnter(borough.name)}
-            onMouseLeave={handleMouseLeave}
-            onClick={() => handleTravelClick(borough.name)}
-            disabled={isGameLoading || currentLocation === borough.name}
-            aria-label={`Travel to ${borough.name}`}
-          >
-            <span className="text-[10px] sm:text-xs font-bold drop-shadow-sm">{borough.name}</span>
-            {currentLocation === borough.name && <Pin className="absolute top-1 right-1 h-3 w-3 sm:h-4 sm:w-4 text-white" />}
-          </button>
-        ))}
+        <svg 
+            viewBox="0 0 300 300" // Adjusted viewBox to better fit the paths
+            className="w-full h-full" 
+            aria-labelledby="nyc-map-title"
+            preserveAspectRatio="xMidYMid meet"
+        >
+          <title id="nyc-map-title">Map of New York City Boroughs</title>
+          {boroughs.map((borough) => {
+            const isCurrent = currentLocation === borough.name;
+            const isHovered = hoveredBorough === borough.name;
+
+            return (
+              <g key={borough.name}>
+                <path
+                  d={borough.pathData}
+                  className={cn(
+                    borough.fillColorClass,
+                    borough.strokeColorClass,
+                    'stroke-[2px]', // Adjusted stroke width
+                    'transition-all duration-200 ease-in-out',
+                    'cursor-pointer',
+                    isCurrent ? 'opacity-100 scale-[1.02]' : 'opacity-70 hover:opacity-90',
+                    isHovered && !isCurrent ? 'opacity-95 scale-[1.03]' : '',
+                    isGameLoading && !isCurrent ? 'cursor-not-allowed opacity-50' : '',
+                    isCurrent && isGameLoading ? 'cursor-not-allowed' : ''
+                  )}
+                  style={{
+                    filter: isHovered || isCurrent ? 'drop-shadow(0px 0px 5px rgba(255,255,255,0.7))' : '',
+                  }}
+                  onMouseEnter={() => handleMouseEnter(borough.name)}
+                  onMouseLeave={handleMouseLeave}
+                  onClick={() => handleTravelClick(borough.name)}
+                  aria-label={`Travel to ${borough.name}`}
+                  tabIndex={0}
+                />
+                <text
+                  x={borough.labelPosition.x}
+                  y={borough.labelPosition.y}
+                  className="text-[8px] sm:text-[10px] font-bold fill-white pointer-events-none"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  style={{ filter: 'drop-shadow(0px 0px 2px rgba(0,0,0,0.7))' }}
+                >
+                  {borough.name}
+                </text>
+                {isCurrent && (
+                  <MapPin 
+                    className="text-white" 
+                    size={16}
+                    x={borough.labelPosition.x - 8} // Adjust to center icon
+                    y={borough.labelPosition.y - 20} // Position above label
+                  />
+                )}
+              </g>
+            );
+          })}
+        </svg>
       </div>
 
       <div className="p-3 border rounded-md bg-card min-h-[120px]">
@@ -110,29 +173,26 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
           {hoveredBorough ? `Headlines in ${hoveredBorough}:` : 'Hover over a borough to see headlines'}
         </h4>
         {isLoadingHeadlines ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-24">
             <Loader2 className="h-6 w-6 animate-spin text-accent" />
             <span className="ml-2 text-sm">Loading headlines...</span>
           </div>
         ) : headlines.length > 0 ? (
-          <ScrollArea className="h-24 pr-2">
-            <div className="space-y-1">
-              {headlines.map((headline, index) => (
-                <HeadlineItem key={index} headline={headline} />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="max-h-24 overflow-y-auto pr-2 space-y-1">
+            {headlines.map((headline, index) => (
+              <HeadlineItem key={index} headline={headline} />
+            ))}
+          </div>
         ) : hoveredBorough && hoveredBorough !== currentLocation ? (
-          <p className="text-xs text-muted-foreground">No specific headlines for {hoveredBorough} right now.</p>
+          <p className="text-xs text-muted-foreground pt-2">No specific headlines for {hoveredBorough} right now.</p>
         ) : hoveredBorough && hoveredBorough === currentLocation ? (
-             <div className="flex items-center text-sm text-accent">
+             <div className="flex items-center text-sm text-accent pt-2">
                 <CheckCircle className="h-4 w-4 mr-2"/> You are currently in {currentLocation}.
              </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Travel to a new borough to expand your empire.</p>
+          <p className="text-xs text-muted-foreground pt-2">Travel to a new borough to expand your empire.</p>
         )}
       </div>
     </div>
   );
 }
-
