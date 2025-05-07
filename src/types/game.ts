@@ -87,6 +87,6 @@ export interface GameState {
   availableArmor: Armor[];
   availableHealingItems: HealingItem[];
   activeBoroughEvents: Record<string, GameEvent | null>; // Borough name -> active event or null
-  boroughHeatLevels: Record<string, number>; // Borough name -> heat level
+  boroughHeatLevels: Record<string, number>; // Borough name -> heat level (0-5)
+  playerActivityInBoroughsThisDay: Record<string, boolean>; // Tracks if player performed illegal activity in a borough today
 }
-

@@ -77,6 +77,7 @@ export function useGameLogic() {
       availableHealingItems: [],
       activeBoroughEvents: {}, // Initialize empty
       boroughHeatLevels: initialHeatLevels, // Initialize with 0 for all boroughs
+      playerActivityInBoroughsThisDay: {}, // Initialize for player activity tracking
     };
   });
 
@@ -105,11 +106,11 @@ export function useGameLogic() {
       const eventInPlayerLocation = dailyEvents[INITIAL_PLAYER_STATS.currentLocation];
       adjustedPrices = applyEventPriceModifiers(adjustedPrices, eventInPlayerLocation);
       
-      const newHeatLevels = { ...gameState.boroughHeatLevels };
+      const initialBoroughHeat = { ...gameState.boroughHeatLevels }; // Start with current (likely all 0s)
       for (const borough in dailyEvents) {
         const event = dailyEvents[borough];
         if (event?.effects.heatChange) {
-          newHeatLevels[borough] = Math.max(0, (newHeatLevels[borough] || 0) + event.effects.heatChange);
+          initialBoroughHeat[borough] = Math.max(0, Math.min(5, (initialBoroughHeat[borough] || 0) + event.effects.heatChange));
         }
          if (event) {
           addLogEntry('event_trigger', `Event in ${borough}: ${event.name} - ${event.description}`);
@@ -124,7 +125,7 @@ export function useGameLogic() {
         availableArmor: armor,
         availableHealingItems: healingItems,
         activeBoroughEvents: dailyEvents,
-        boroughHeatLevels: newHeatLevels,
+        boroughHeatLevels: initialBoroughHeat,
         isLoadingMarket: false,
       }));
       addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market, shop, and events loaded.`);
@@ -134,12 +135,12 @@ export function useGameLogic() {
       addLogEntry('info', 'Error loading initial game data.');
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
-  }, [toast, addLogEntry, gameState.boroughHeatLevels]); // Added gameState.boroughHeatLevels to dependencies
+  }, [toast, addLogEntry, gameState.boroughHeatLevels]);
 
   useEffect(() => {
     fetchInitialData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // fetchInitialData is memoized, direct call in useEffect is fine.
+  }, []); 
 
   const applyHeadlineImpacts = (prices: DrugPrice[], headlines: LocalHeadline[]): DrugPrice[] => {
     if (!headlines.length) return prices;
@@ -190,6 +191,10 @@ export function useGameLogic() {
       toast({ title: "Purchase Successful", description: successMsg, variant: "default"});
       addLogEntry('buy', successMsg);
 
+      // Mark activity in the current borough for heat calculation
+      const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay };
+      newPlayerActivity[currentStats.currentLocation] = true;
+
       return {
         ...prev,
         playerStats: {
@@ -197,6 +202,7 @@ export function useGameLogic() {
           cash: newCash,
           inventory: newInventory,
         },
+        playerActivityInBoroughsThisDay: newPlayerActivity,
       };
     });
   }, [toast, addLogEntry]);
@@ -239,6 +245,10 @@ export function useGameLogic() {
       toast({ title: "Sale Successful", description: successMsg, variant: "default" });
       addLogEntry('sell', successMsg);
 
+      // Mark activity in the current borough for heat calculation
+      const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay };
+      newPlayerActivity[currentStats.currentLocation] = true;
+
       return {
         ...prev,
         playerStats: {
@@ -246,6 +256,7 @@ export function useGameLogic() {
           cash: newCash,
           inventory: newInventory,
         },
+        playerActivityInBoroughsThisDay: newPlayerActivity,
       };
     });
   }, [toast, addLogEntry]);
@@ -365,9 +376,6 @@ export function useGameLogic() {
         toast({ title: "Travel Successful", description: travelMessage });
         addLogEntry('travel', travelMessage);
         
-        // IMPORTANT: Re-fetch market prices and headlines for the new location
-        // This assumes getMarketPrices and getLocalHeadlines can be called immediately
-        // For a smoother UX, consider an isLoading state for travel if fetches are slow.
         (async () => {
           setGameState(innerPrev => ({...innerPrev, isLoadingMarket: true}));
           try {
@@ -375,7 +383,7 @@ export function useGameLogic() {
             const newHeadlines = await getLocalHeadlines(targetLocation);
             
             newPrices = applyHeadlineImpacts(newPrices, newHeadlines);
-            const eventInNewLocation = prev.activeBoroughEvents[targetLocation]; // Use current day's event for new location
+            const eventInNewLocation = prev.activeBoroughEvents[targetLocation]; 
             newPrices = applyEventPriceModifiers(newPrices, eventInNewLocation);
 
             setGameState(innerPrev => ({
@@ -421,23 +429,41 @@ export function useGameLogic() {
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
     
-    // Fetch new daily events for all boroughs
+    // --- Player Activity Heat Update ---
+    let workingHeatLevels = { ...gameState.boroughHeatLevels };
+    NYC_LOCATIONS.forEach(borough => {
+      const hasActivity = gameState.playerActivityInBoroughsThisDay[borough];
+      const currentBoroughHeat = workingHeatLevels[borough] || 0;
+      let newBoroughHeat: number;
+      if (hasActivity) {
+        newBoroughHeat = Math.min(5, currentBoroughHeat + 1);
+        if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat increased to ${newBoroughHeat} due to player activity.`);
+      } else {
+        newBoroughHeat = Math.max(0, currentBoroughHeat - 1);
+         if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat decreased to ${newBoroughHeat} due to inactivity.`);
+      }
+      workingHeatLevels[borough] = newBoroughHeat;
+    });
+    const playerActivityProcessedHeatLevels = { ...workingHeatLevels };
+    
+    // --- Event Fetching and Event Heat Update ---
     const newDailyEvents = await getTodaysEvents();
-    const newHeatLevels = { ...gameState.boroughHeatLevels };
+    let eventProcessedHeatLevels = { ...playerActivityProcessedHeatLevels };
 
     for (const borough in newDailyEvents) {
       const event = newDailyEvents[borough];
       if (event?.effects.heatChange) {
-        newHeatLevels[borough] = Math.max(0, (newHeatLevels[borough] || 0) + event.effects.heatChange);
+        const currentEventBoroughHeat = eventProcessedHeatLevels[borough] || 0;
+        eventProcessedHeatLevels[borough] = Math.max(0, Math.min(5, currentEventBoroughHeat + event.effects.heatChange));
+         if (eventProcessedHeatLevels[borough] !== currentEventBoroughHeat) addLogEntry('event_trigger', `${borough} heat changed to ${eventProcessedHeatLevels[borough]} due to event: ${event.name}.`);
       }
-      if (event) { // Log all active events for the day
+      if (event) { 
         addLogEntry('event_trigger', `Today in ${borough}: ${event.name} - ${event.description}`);
       }
     }
-    addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}. Heat: ${newHeatLevels[currentStats.currentLocation]}.`);
+    addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}. Current Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`);
 
-
-    // Apply player impact if an event in the current location has one
+    // --- Player Impact from Event in Current Location ---
     const eventInCurrentLocation = newDailyEvents[currentStats.currentLocation];
     if (eventInCurrentLocation?.effects.playerImpact) {
       const impact = eventInCurrentLocation.effects.playerImpact;
@@ -452,23 +478,20 @@ export function useGameLogic() {
         currentStats.cash = Math.max(0, currentStats.cash + impact.cashChange);
         addLogEntry('info', `Cash ${impact.cashChange > 0 ? 'increased' : 'decreased'} by $${Math.abs(impact.cashChange).toLocaleString()} due to event.`);
       }
-      if (impact.reputationChange) { // If reputation system is used more broadly
+      if (impact.reputationChange) { 
         currentStats.reputation += impact.reputationChange;
         addLogEntry('info', `Reputation changed by ${impact.reputationChange} due to event.`);
       }
       if (currentStats.health <= 0) {
-        // Game over from event direct damage
-        setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, activeBoroughEvents: newDailyEvents, boroughHeatLevels: newHeatLevels }));
+        setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, activeBoroughEvents: newDailyEvents, boroughHeatLevels: eventProcessedHeatLevels, playerActivityInBoroughsThisDay: {} }));
         toast({ title: "Game Over", description: "The event was too much for you.", variant: "destructive" });
         addLogEntry('game_over', "Succumbed to an event's direct impact. Game Over.");
         return;
       }
-      // Handle combat triggered by event
       if (impact.triggerCombat) {
-         let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; // Default
+         let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; 
          if (impact.triggerCombat === 'police_raid') opponentTypeForEvent = 'police';
          else if (impact.triggerCombat === 'gang_activity') opponentTypeForEvent = 'gang';
-         // simulate combat here based on opponentTypeForEvent and currentStats
           try {
             const combatOutcome: CombatOutcome = await simulateCombat(opponentTypeForEvent, currentStats);
             let actualHealthLost = combatOutcome.healthLost;
@@ -485,20 +508,27 @@ export function useGameLogic() {
 
             toast({ title: combatOutcome.playerWins ? "Event Survived!" : "Event Trouble!", description: combatOutcome.narration, variant: combatOutcome.playerWins ? "default" : "destructive", duration: 6000 });
             addLogEntry(combatOutcome.playerWins ? 'combat_win' : 'combat_loss', `Event Combat (${opponentTypeForEvent}): ${combatOutcome.narration}`);
-            // Further logging for health/cash/rep changes from this combat...
-             if (currentStats.health <= 0) { /* Game over check after event combat */ }
-          } catch (error) { /* Error handling for event combat */ }
+             if (currentStats.health <= 0) { 
+               setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, activeBoroughEvents: newDailyEvents, boroughHeatLevels: eventProcessedHeatLevels, playerActivityInBoroughsThisDay: {} }));
+               toast({ title: "Game Over", description: "Succumbed during an event combat.", variant: "destructive" });
+               addLogEntry('game_over', "Succumbed during an event combat. Game Over.");
+               return;
+             }
+          } catch (error) { 
+            console.error("Error during event combat simulation:", error);
+            addLogEntry('info', "An error occurred during event combat simulation.");
+          }
       }
     }
     
-    // Market Update using new events
+    // --- Market Update using new events and heat ---
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
-      newMarketPrices = await getMarketPrices(currentStats.currentLocation);
+      newMarketPrices = await getMarketPrices(currentStats.currentLocation); // TODO: Pass heat level if market prices depend on it
       newLocalHeadlines = await getLocalHeadlines(currentStats.currentLocation);
       newMarketPrices = applyHeadlineImpacts(newMarketPrices, newLocalHeadlines);
-      newMarketPrices = applyEventPriceModifiers(newMarketPrices, eventInCurrentLocation); // Apply event modifiers
+      newMarketPrices = applyEventPriceModifiers(newMarketPrices, eventInCurrentLocation); 
     } catch (error) {
       console.error("Failed to fetch market data for next day:", error);
       const marketErrorMsg = "Could not update market data.";
@@ -506,18 +536,23 @@ export function useGameLogic() {
       addLogEntry('info', marketErrorMsg);
     }
     
-    // Generic Random Encounter (if not already handled by a specific event combat)
-    // Could add a condition here to skip if eventInCurrentLocation.effects.playerImpact?.triggerCombat already happened.
-    // For now, both can occur, which might be intense.
-    if (Math.random() < 0.3 && !eventInCurrentLocation?.effects.playerImpact?.triggerCombat) { 
+    // --- Generic Random Encounter ---
+    if (Math.random() < (0.15 + (eventProcessedHeatLevels[currentStats.currentLocation] || 0) * 0.05) && !eventInCurrentLocation?.effects.playerImpact?.triggerCombat) { // Base 15% chance, +5% per heat level
       const opponentTypes = ["police", "gang", "fiend"] as const;
-      const opponentType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
-      const encounterMsg = `You've run into ${opponentType === 'police' ? 'the police' : opponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}!`;
+      // Skew opponent type by heat: more police/gang at higher heat
+      let selectedOpponentType: 'police' | 'gang' | 'fiend';
+      const heatFactor = (eventProcessedHeatLevels[currentStats.currentLocation] || 0) / 5; // 0 to 1
+      const randomRoll = Math.random();
+      if (randomRoll < 0.33 + heatFactor * 0.2) selectedOpponentType = 'police'; // More likely at high heat
+      else if (randomRoll < 0.66 + heatFactor * 0.1) selectedOpponentType = 'gang'; // Slightly more likely at high heat
+      else selectedOpponentType = 'fiend';
+
+      const encounterMsg = `You've run into ${selectedOpponentType === 'police' ? 'the police' : selectedOpponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}! Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`;
       toast({ title: "Encounter!", description: encounterMsg, duration: 4000 });
       addLogEntry('info', encounterMsg);
       
       try {
-        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats);
+        const combatOutcome: CombatOutcome = await simulateCombat(selectedOpponentType, currentStats);
         
         let actualHealthLost = combatOutcome.healthLost;
         if (currentStats.equippedArmor) {
@@ -537,12 +572,15 @@ export function useGameLogic() {
         if (combatOutcome.cashChange !== 0) addLogEntry('info', `${combatOutcome.cashChange > 0 ? 'Gained' : 'Lost'} $${Math.abs(combatOutcome.cashChange).toLocaleString()}.`);
         if (combatOutcome.reputationChange !== 0) addLogEntry('info', `Reputation changed by ${combatOutcome.reputationChange}.`);
 
-      } catch (error) { /* Error handling for generic combat */ }
+      } catch (error) { 
+         console.error("Error during random combat simulation:", error);
+         addLogEntry('info', "An error occurred during random combat simulation.");
+      }
     }
 
     if (currentStats.health <= 0) {
       const gameOverMsg = "Your health reached 0. Game Over.";
-      setGameState(prev => ({ ...prev, playerStats: { ...currentStats, health: 0 }, isGameOver: true, isLoadingNextDay: false, marketPrices: newMarketPrices, localHeadlines: newLocalHeadlines, activeBoroughEvents: newDailyEvents, boroughHeatLevels: newHeatLevels, }));
+      setGameState(prev => ({ ...prev, playerStats: { ...currentStats, health: 0 }, isGameOver: true, isLoadingNextDay: false, marketPrices: newMarketPrices, localHeadlines: newLocalHeadlines, activeBoroughEvents: newDailyEvents, boroughHeatLevels: eventProcessedHeatLevels, playerActivityInBoroughsThisDay: {} }));
       toast({ title: "Game Over", description: gameOverMsg, variant: "destructive" });
       addLogEntry('game_over', gameOverMsg);
       return;
@@ -568,11 +606,12 @@ export function useGameLogic() {
       marketPrices: newMarketPrices,
       localHeadlines: newLocalHeadlines,
       activeBoroughEvents: newDailyEvents,
-      boroughHeatLevels: newHeatLevels,
+      boroughHeatLevels: eventProcessedHeatLevels,
       isLoadingNextDay: false,
+      playerActivityInBoroughsThisDay: {}, // Reset for the new day
     }));
 
-  }, [gameState.playerStats, gameState.isGameOver, gameState.boroughHeatLevels, gameState.activeBoroughEvents, toast, addLogEntry]);
+  }, [gameState.playerStats, gameState.isGameOver, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry]);
 
   const resetGame = useCallback(() => {
      const initialHeatLevelsReset: Record<string, number> = {};
@@ -591,9 +630,10 @@ export function useGameLogic() {
       availableHealingItems: [],
       activeBoroughEvents: {},
       boroughHeatLevels: initialHeatLevelsReset,
+      playerActivityInBoroughsThisDay: {},
     });
     addLogEntry('info', 'Game reset.');
-    fetchInitialData(); // This will also fetch initial events
+    fetchInitialData(); 
   }, [fetchInitialData, addLogEntry]);
 
   return {
