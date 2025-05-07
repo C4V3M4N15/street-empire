@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { cn } from '@/lib/utils'; // Added import for cn
+import { cn } from '@/lib/utils';
 
 interface PlayerStatsCardProps {
   playerStats: PlayerStats;
@@ -55,6 +55,9 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
         <StatItem icon={DollarSign} label="Cash" value={`$${playerStats.cash.toLocaleString()}`} />
         <StatItem icon={CalendarDays} label="Days Passed" value={playerStats.daysPassed} />
         <StatItem icon={MapPin} label="Location" value={playerStats.currentLocation} />
+        <StatItem icon={Award} label="Rank" value={playerStats.rank} />
+        <StatItem icon={ShoppingBag} label="Capacity" value={`${totalInventoryUnits.toLocaleString()} / ${playerStats.maxInventoryCapacity.toLocaleString()} units`} />
+
 
         <Accordion type="single" collapsible className="w-full pt-1">
           <AccordionItem value="combat-status" className="border-t border-border/50">
@@ -70,8 +73,6 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               <StatItem icon={ShieldHalf} label="Armor" value={`${currentArmorName} (+${armorProtectionBonus} DEF)`} iconColor="text-blue-500" />
               <StatItem icon={Zap} label="Total Protection" value={totalProtection} iconColor="text-sky-400" />
               <StatItem icon={Star} label="Reputation" value={playerStats.reputation} iconColor="text-yellow-500" />
-              <StatItem icon={Award} label="Rank" value={playerStats.rank} />
-              <StatItem icon={ShoppingBag} label="Capacity" value={`${totalInventoryUnits.toLocaleString()} / ${playerStats.maxInventoryCapacity.toLocaleString()} units`} />
             </AccordionContent>
           </AccordionItem>
 
