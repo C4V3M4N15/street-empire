@@ -157,6 +157,15 @@ export default function StreetEmpirePage() {
         />
       </div>
 
+      {/* Banner Ad Placeholder */}
+      <div 
+        data-ai-hint="advertisement banner"
+        className="w-full max-w-3xl mt-4 h-24 bg-muted border border-border flex items-center justify-center text-muted-foreground rounded-lg shadow-md"
+      >
+        <p className="text-sm">Your Ad Here</p>
+      </div>
+
+
       <GameOverDialog
         isOpen={isGameOver && !isBattleActive}
         onClose={resetGame}
