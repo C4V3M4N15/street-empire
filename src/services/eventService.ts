@@ -10,18 +10,18 @@ export const drugCategories = {
   stimulants: ['Cocaine', 'Meth', 'MDMA', 'Crack', 'Adderall'],
   opioids: ['Heroin', 'Opium', 'Fentanyl', 'OxyContin', 'Codeine Syrup'],
   psychedelics: ['LSD', 'Mushrooms', 'DMT', 'Mescaline', 'Ayahuasca Brew', 'Spice', 'PCP'],
-  party: ['MDMA', 'Ketamine', 'LSD', 'Cocaine', 'GHB', 'Poppers (Amyl Nitrite)', 'Ecstasy (MDMA)'], // Ecstasy added as alias
+  party: ['MDMA', 'Ketamine', 'LSD', 'Cocaine', 'GHB', 'Poppers (Amyl Nitrite)'],
   prescription: ['Xanax', 'Valium', 'Adderall', 'OxyContin', 'Codeine Syrup'],
   cheap: ['Weed', 'Spice', 'Xanax', 'Valium', 'Poppers (Amyl Nitrite)'],
   expensive: ['Cocaine', 'Heroin', 'Fentanyl', 'DMT', 'OxyContin', 'Meth'],
-  synthetics: ['Meth', 'MDMA', 'LSD', 'Fentanyl', 'Spice', 'PCP', 'GHB', 'Rohypnol', 'Adderall', 'Ecstasy (MDMA)'],
+  synthetics: ['Meth', 'MDMA', 'LSD', 'Fentanyl', 'Spice', 'PCP', 'GHB', 'Rohypnol', 'Adderall'],
   organics: ['Weed', 'Mushrooms', 'Opium', 'Cocaine', 'Heroin', 'Mescaline', 'Ayahuasca Brew'], // Cocaine/Heroin are processed but start organic
 };
 const allDrugNamesForCategory = [
     'Weed', 'Cocaine', 'Heroin', 'MDMA', 'LSD', 'Meth', 'Mushrooms', 'Opium', 'Ketamine',
     'PCP', 'Xanax', 'Valium', 'Steroids', 'Fentanyl', 'Crack', 'Spice', 'GHB',
     'Rohypnol', 'Adderall', 'OxyContin', 'Codeine Syrup', 'Poppers (Amyl Nitrite)',
-    'DMT', 'Mescaline', 'Ayahuasca Brew', 'Ecstasy (MDMA)' // Ensure Ecstasy is here
+    'DMT', 'Mescaline', 'Ayahuasca Brew'
 ];
 drugCategories.all = allDrugNamesForCategory;
 
@@ -276,7 +276,7 @@ const brooklynEvents: GameEvent[] = [
     text: 'Construction crews are everywhere as brownstone renovations hit a peak. Lots of cash flowing, and workers looking to unwind.',
     type: 'economy',
     description: 'New money flooding into Brooklyn brownstones. Construction workers and new owners have cash to spend.',
-    effects: { priceModifier: { 'Weed': 1.05, 'Cocaine': 1.08, 'Beer': 1.10 } } // Assuming Beer might be a cheap drug placeholder
+    effects: { priceModifier: { 'Weed': 1.05, 'Cocaine': 1.08 } }
   },
   {
     id: 'brooklyn_community_garden_drug_bust',
@@ -323,7 +323,7 @@ const queensEvents: GameEvent[] = [
     type: 'civil',
     description: 'Flushing is packed for a cultural fest. Some niche markets are buzzing.',
     durationInDays: 3,
-    effects: { priceModifier: { 'Opium': 1.15, 'Ketamine': 1.10, 'Herbs': 1.12 } } // Example niche demands
+    effects: { priceModifier: { 'Opium': 1.15, 'Ketamine': 1.10 } } // Example niche demands
   },
   // New Queens Events
   {
@@ -389,7 +389,7 @@ const queensEvents: GameEvent[] = [
     text: 'A legendary rave in an abandoned Queens hospital finally gets busted. Major blow to the underground scene.',
     type: 'police',
     description: 'The party is over at the old Creedmoor site. Cops cleared it out, tons of arrests.',
-    effects: { heatChange: 2, priceModifier: { 'Ecstasy (MDMA)': 1.20, 'LSD': 1.15, 'Ketamine': 1.18 } }
+    effects: { heatChange: 2, priceModifier: { 'MDMA': 1.20, 'LSD': 1.15, 'Ketamine': 1.18 } }
   },
   {
     id: 'queens_botanica_raid_for_illegal_herbs',
@@ -618,7 +618,7 @@ const statenIslandEvents: GameEvent[] = [
     type: 'gang', // Often associated with certain types of gangs
     description: 'Bikers are taking over parts of SI for a rally. Could mean more access to certain things, or more trouble.',
     durationInDays: 3,
-    effects: { heatChange: 1, priceModifier: { 'Meth': 1.10, 'Steroids': 1.12, 'Beer': 1.05 } }
+    effects: { heatChange: 1, priceModifier: { 'Meth': 1.10, 'Steroids': 1.12 } }
   }
 ];
 

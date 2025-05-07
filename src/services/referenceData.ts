@@ -5,17 +5,17 @@ import { ALL_DRUGS as marketAllDrugs } from '@/services/market';
 export interface DrugReference {
   name: string;
   basePrice: number;
-  volatility?: number; 
+  volatility?: number;
   description: string;
-  category: string; 
+  category: string;
 }
 
 export interface BoroughReference {
   name: string;
   description: string;
-  typicalHeat?: string; 
-  commonEvents?: string; 
-  priceProfile?: string; 
+  typicalHeat?: string;
+  commonEvents?: string;
+  priceProfile?: string;
 }
 
 const drugCategoriesMap: Record<string, string> = {
@@ -44,14 +44,13 @@ const drugCategoriesMap: Record<string, string> = {
   'DMT': 'Psychedelic',
   'Mescaline': 'Psychedelic',
   'Ayahuasca Brew': 'Psychedelic',
-  'Ecstasy (MDMA)': 'Party/Empathogen',
 };
 
 export const ALL_DRUG_REFERENCE_DATA: DrugReference[] = marketAllDrugs.map(drug => ({
   name: drug.name,
   basePrice: drug.basePrice,
   volatility: drug.volatility,
-  description: `A commonly traded illicit substance. Base price is around $${drug.basePrice}. Known for its ${drug.volatility * 100}% price volatility.`, 
+  description: `A commonly traded illicit substance. Base price is around $${drug.basePrice}. Known for its ${drug.volatility ? (drug.volatility * 100).toFixed(0) : 'N/A'}% price volatility.`,
   category: drugCategoriesMap[drug.name] || 'General Illicit',
 }));
 
@@ -60,7 +59,7 @@ const drugDescriptions: Record<string, Partial<DrugReference>> = {
   'Weed': { description: 'Popular psychoactive plant. Relatively low cost and high demand.', category: 'Psychedelic/Relaxant' },
   'Cocaine': { description: 'Powerful stimulant derived from coca leaves. High price, high risk, high profit.', category: 'Stimulant (Expensive)' },
   'Heroin': { description: 'Highly addictive opioid. Dangerous but profitable.', category: 'Opioid (Expensive)' },
-  'MDMA': { description: 'Also known as Ecstasy. Popular party drug, creates feelings of euphoria.', category: 'Party/Empathogen' },
+  'MDMA': { description: 'Popular party drug, creates feelings of euphoria.', category: 'Party/Empathogen' },
   'LSD': { description: 'Potent psychedelic. Small doses, big effects. Volatile market.', category: 'Psychedelic' },
   'Meth': { description: 'Cheap and powerful synthetic stimulant. Highly destructive.', category: 'Stimulant (Synthetic)' },
   'Mushrooms': { description: 'Naturally occurring psychedelics. Often sold by weight.', category: 'Psychedelic (Organic)' },
@@ -82,7 +81,6 @@ const drugDescriptions: Record<string, Partial<DrugReference>> = {
   'DMT': { description: 'Powerful, short-acting psychedelic. "The Spirit Molecule".', category: 'Psychedelic (Potent)' },
   'Mescaline': { description: 'Psychedelic found in peyote and San Pedro cacti.', category: 'Psychedelic (Organic)' },
   'Ayahuasca Brew': { description: 'Psychedelic brew traditionally used in shamanic rituals.', category: 'Psychedelic (Organic)' },
-  'Ecstasy (MDMA)': { description: 'Commonly known as Ecstasy, same as MDMA. Popular party drug.', category: 'Party/Empathogen' },
 };
 
 ALL_DRUG_REFERENCE_DATA.forEach(drugRef => {

@@ -2,35 +2,35 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
-import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game'; 
+import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info } from 'lucide-react'; // Added Info, Megaphone, Zap
-import type { PlayerStats, GameState } from '@/types/game'; 
+import type { PlayerStats, GameState } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NycMap } from './NycMap';
 import { ReferencePanel } from './ReferencePanel'; // Import ReferencePanel
-import { cn } from '@/lib/utils'; 
+import { cn } from '@/lib/utils';
 
 interface MarketInfoCardProps {
   marketPrices: DrugPrice[];
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
-  activeBoroughEvents: GameState['activeBoroughEvents']; 
+  activeBoroughEvents: GameState['activeBoroughEvents'];
   availableWeapons: Weapon[];
   availableArmor: Armor[];
-  availableHealingItems: HealingItem[]; 
+  availableHealingItems: HealingItem[];
   availableCapacityUpgrades: CapacityUpgrade[];
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
   buyWeapon: (weapon: Weapon) => void;
   buyArmor: (armor: Armor) => void;
-  buyHealingItem: (item: HealingItem) => void; 
+  buyHealingItem: (item: HealingItem) => void;
   buyCapacityUpgrade: (upgrade: CapacityUpgrade) => void;
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
@@ -40,7 +40,7 @@ const HeadlineItem: React.FC<{ headline: string; impact?: number; type?: string;
   const impactColor = impact && impact !== 1 ? (impact > 1 ? 'text-accent' : 'text-destructive') : 'text-muted-foreground';
   const ImpactIcon = impact && impact !== 1 ? (impact > 1 ? TrendingUp : AlertTriangle) : (isEvent ? Megaphone : Newspaper);
   const impactText = impact && impact !== 1 ? `Impact: x${impact.toFixed(2)}` : null;
-  
+
   return (
     <div className={cn("flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0", isEvent && "bg-yellow-500/10 border-yellow-500/50 rounded-sm px-2")}>
       <ImpactIcon className={cn("h-4 w-4 mt-0.5 shrink-0", isEvent ? "text-yellow-300" : impactColor)} />
@@ -53,14 +53,14 @@ const HeadlineItem: React.FC<{ headline: string; impact?: number; type?: string;
   );
 };
 
-const MAX_PLAYER_HEALTH = 100; 
+const MAX_PLAYER_HEALTH = 100;
 
 export function MarketInfoCard({
   marketPrices,
   localHeadlines,
   isLoading,
   playerStats,
-  activeBoroughEvents, 
+  activeBoroughEvents,
   availableWeapons,
   availableArmor,
   availableHealingItems,
@@ -158,7 +158,7 @@ export function MarketInfoCard({
                 <h3 className="text-md font-semibold mb-2 flex items-center">
                   <DollarSign className="mr-2 h-4 w-4 text-accent" /> Drug Prices & Inventory ({playerStats.currentLocation})
                 </h3>
-                
+
                 {marketPrices.length > 0 ? (
                   <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
                     {marketPrices.map((drug, index) => {
@@ -237,11 +237,11 @@ export function MarketInfoCard({
                 </h3>
                 <div className="max-h-36 overflow-y-auto pr-1 space-y-0.5">
                   {currentEventInLocation ? (
-                      <HeadlineItem 
-                        headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`} 
+                      <HeadlineItem
+                        headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`}
                         type={currentEventInLocation.type}
                         isEvent={true}
-                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined} 
+                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined}
                       />
                   ) : (
                      <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
@@ -335,7 +335,7 @@ export function MarketInfoCard({
                               disabled={isLoading || playerStats.cash < armorItem.price || playerStats.purchasedArmorIds.includes(armorItem.id)}
                               className="text-xs px-3"
                             >
-                              {playerStats.purchasedArmorIds.includes(armorItem.id) ? 'Owned' : 
+                              {playerStats.purchasedArmorIds.includes(armorItem.id) ? 'Owned' :
                                (playerStats.equippedArmor?.id === armorItem.id ? 'Equipped' : 'Buy')}
                             </Button>
                           </div>
