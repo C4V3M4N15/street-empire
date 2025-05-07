@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Sword, Heart, User, Skull, Zap, Loader2, Footprints } from 'lucide-react'; // Changed Run to Footprints
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
+import React, { useEffect, useRef } from 'react';
 
 interface BattleScreenProps {
   playerStats: PlayerStats;
@@ -45,6 +46,15 @@ export function BattleScreen({
   const playerEffectiveAttack = PLAYER_BASE_ATTACK + (playerStats.equippedWeapon?.damageBonus || 0);
   const playerEffectiveDefense = PLAYER_BASE_DEFENSE + (playerStats.equippedArmor?.protectionBonus || 0);
   const isBattleOver = !!battleMessage;
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [battleLog]);
+
 
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-50 overflow-y-auto">
@@ -104,7 +114,7 @@ export function BattleScreen({
               <CardTitle className="text-sm font-medium">Battle Log</CardTitle>
             </CardHeader>
             <CardContent className="p-2">
-              <ScrollArea className="h-24 w-full pr-3">
+              <ScrollArea className="h-24 w-full pr-3" ref={scrollAreaRef}>
                 {battleLog.length === 0 && <p className="text-xs text-muted-foreground italic text-center">The air is tense...</p>}
                 {battleLog.map(entry => (
                   <p key={entry.id} className="text-xs py-0.5 border-b border-border/20 last:border-b-0">
