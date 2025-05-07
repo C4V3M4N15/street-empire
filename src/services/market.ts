@@ -29,20 +29,20 @@ export interface LocalHeadline {
 
 const ALL_DRUGS = [
   { name: 'Weed', basePrice: 250, volatility: 0.3 },
-  { name: 'Cocaine', basePrice: 12000, volatility: 0.5 },
-  { name: 'Heroin', basePrice: 8000, volatility: 0.45 },
-  { name: 'MDMA', basePrice: 1300, volatility: 0.35 },
-  { name: 'LSD', basePrice: 700, volatility: 0.4 },
-  { name: 'Meth', basePrice: 4000, volatility: 0.55 },
+  { name: 'Cocaine', basePrice: 13000, volatility: 0.45 }, // Adjusted
+  { name: 'Heroin', basePrice: 9000, volatility: 0.4 },    // Adjusted
+  { name: 'MDMA', basePrice: 1500, volatility: 0.3 },     // Adjusted
+  { name: 'LSD', basePrice: 800, volatility: 0.35 },       // Adjusted
+  { name: 'Meth', basePrice: 4500, volatility: 0.5 },      // Adjusted
   { name: 'Mushrooms', basePrice: 400, volatility: 0.3 },
-  { name: 'Opium', basePrice: 4500, volatility: 0.4 },
-  { name: 'Ketamine', basePrice: 1800, volatility: 0.38 },
-  { name: 'PCP', basePrice: 1000, volatility: 0.42 },
-  { name: 'Xanax', basePrice: 40, volatility: 0.25 },
-  { name: 'Valium', basePrice: 30, volatility: 0.2 },
+  { name: 'Opium', basePrice: 5000, volatility: 0.35 },     // Adjusted
+  { name: 'Ketamine', basePrice: 2000, volatility: 0.35 },  // Adjusted
+  { name: 'PCP', basePrice: 1200, volatility: 0.4 },       // Adjusted
+  { name: 'Xanax', basePrice: 50, volatility: 0.2 },       // Adjusted
+  { name: 'Valium', basePrice: 40, volatility: 0.15 },      // Adjusted
   { name: 'Steroids', basePrice: 250, volatility: 0.3 },
-  { name: 'Fentanyl', basePrice: 14000, volatility: 0.6 },
-  { name: 'Crack', basePrice: 800, volatility: 0.5 },
+  { name: 'Fentanyl', basePrice: 15000, volatility: 0.55 }, // Adjusted
+  { name: 'Crack', basePrice: 1000, volatility: 0.45 },    // Adjusted
   { name: 'Spice', basePrice: 150, volatility: 0.35 },
   { name: 'GHB', basePrice: 600, volatility: 0.4 },
   { name: 'Rohypnol', basePrice: 200, volatility: 0.3 },
@@ -56,9 +56,9 @@ const ALL_DRUGS = [
 ];
 
 const ALL_HEADLINES = [
-  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
+  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.35, positive: true }, // Adjusted impact
   { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
-  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.4, positive: false },
+  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.3, positive: false }, // Adjusted impact
   { text: "Celebrity overdoses on {drug} in a Manhattan penthouse. Public outcry!", impactDrugSpecific: true, impactFactor: -0.2, positive: false },
   { text: "Economic boom in NYC! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
   { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
@@ -102,10 +102,13 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
   const selectedDrugs = shuffledDrugs.slice(0, numDrugsToShow);
 
   return selectedDrugs.map(drug => {
-    // Generate a random fluctuation using a Gaussian-like distribution
-    // Summing 3 uniform randoms and normalizing approximates a bell curve centered at 0, range roughly -1 to 1.
-    const gaussianApproximation = ((Math.random() + Math.random() + Math.random()) / 3 - 0.5) * 2;
-    const priceFluctuation = gaussianApproximation * drug.volatility;
+    const randomFactor = gaussianRandom(); // Use a value from standard normal distribution
+    // Scale and shift the randomFactor to be more suitable for price fluctuation.
+    // For example, clamp it or use a smaller multiplier if volatility is high.
+    // A typical gaussianRandom() output is mostly between -3 and 3.
+    // We want volatility to represent a percentage, e.g., 0.3 means +/-30% potentially.
+    // So, randomFactor * drug.volatility is a direct way.
+    const priceFluctuation = randomFactor * drug.volatility;
     
     let price = drug.basePrice * (1 + priceFluctuation);
     
@@ -163,3 +166,4 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
 
   return headlines;
 }
+
