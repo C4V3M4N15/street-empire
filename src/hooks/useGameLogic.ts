@@ -7,7 +7,7 @@ import type { GameEvent } from '@/types/events';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { generateEnemyStats, getBattleResultConsequences, type BattleResult } from '@/services/combat';
 import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgrades } from '@/services/shopItems';
-import { getTodaysEvents, drugCategories as eventDrugCategories } from '@/services/eventService'; 
+import { getTodaysEvents, drugCategories as eventDrugCategories, resetUniqueEvents } from '@/services/eventService'; 
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; 
 
@@ -33,24 +33,28 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
   if (!event || !event.effects) return prices;
+  
   return prices.map(dp => {
     let newPrice = dp.price;
+    // Direct drug name modifier
     if (event.effects.priceModifier && event.effects.priceModifier[dp.drug]) {
       newPrice *= event.effects.priceModifier[dp.drug];
-    } else {
-      event.effects.drugPriceModifiers?.forEach(mod => {
-        if (mod.drugName === dp.drug) newPrice *= mod.factor;
-      });
-      event.effects.categoryPriceModifiers?.forEach(catMod => {
-        const categoryDrugs = catMod.category === eventDrugCategories.all 
-          ? eventDrugCategories.all 
-          : (eventDrugCategories[catMod.category as keyof eventDrugCategories] || []);
-        if (categoryDrugs.includes(dp.drug)) newPrice *= catMod.factor;
-      });
     }
+    // Specific drug list modifier (legacy, can be merged into priceModifier)
+    event.effects.drugPriceModifiers?.forEach(mod => {
+      if (mod.drugName === dp.drug) newPrice *= mod.factor;
+    });
+    // Category modifiers
+    event.effects.categoryPriceModifiers?.forEach(catMod => {
+      const categoryDrugs = eventDrugCategories[catMod.categoryKey] || [];
+      if (categoryDrugs.includes(dp.drug)) {
+        newPrice *= catMod.factor;
+      }
+    });
     return { ...dp, price: Math.max(1, Math.round(newPrice)) };
   });
 };
+
 
 export function useGameLogic() {
   const [gameState, setGameState] = useState<GameState>(() => {
@@ -86,13 +90,14 @@ export function useGameLogic() {
     const entry = { id: uuidv4(), timestamp: new Date().toISOString(), type, message };
     setGameState(prev => ({
       ...prev,
-      eventLog: isBattleLog ? prev.eventLog : [entry, ...prev.eventLog].slice(0, 100), // Keep general log size
-      battleLog: isBattleLog ? [entry, ...prev.battleLog].slice(0, 20) : prev.battleLog, // Keep battle log smaller
+      eventLog: isBattleLog ? prev.eventLog : [entry, ...prev.eventLog].slice(0, 100),
+      battleLog: isBattleLog ? [entry, ...prev.battleLog].slice(0, 20) : prev.battleLog,
     }));
   }, []);
 
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
+    resetUniqueEvents(); // Reset unique event tracking for a new game
     try {
       const [prices, headlines, weapons, armor, healingItems, capacityUpgrades, dailyEvents] = await Promise.all([
         getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
@@ -101,7 +106,7 @@ export function useGameLogic() {
         getShopArmor(),
         getShopHealingItems(),
         getShopCapacityUpgrades(),
-        getTodaysEvents(), 
+        getTodaysEvents(INITIAL_PLAYER_STATS.daysPassed, gameState.boroughHeatLevels), 
       ]);
       
       let adjustedPrices = applyHeadlineImpacts(prices, headlines);
@@ -115,7 +120,8 @@ export function useGameLogic() {
           initialBoroughHeat[borough] = Math.max(0, Math.min(5, (initialBoroughHeat[borough] || 0) + event.effects.heatChange));
         }
          if (event) {
-          addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}`);
+          const durationText = event.durationInDays && event.durationInDays > 1 ? ` (lasts ${event.durationInDays} days)` : '';
+          addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
         }
       }
 
@@ -139,7 +145,7 @@ export function useGameLogic() {
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry]); 
+  }, [toast, addLogEntry]); // gameState.boroughHeatLevels removed to avoid re-fetch on heat change
 
   useEffect(() => {
     fetchInitialData();
@@ -269,7 +275,6 @@ export function useGameLogic() {
     catch (e) { console.error(e); toast({ title: "Headline Error", variant: "destructive" }); return []; }
   }, [toast]);
 
-  // --- BATTLE LOGIC ---
   const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     setGameState(prev => {
       const enemy = generateEnemyStats(opponentType, prev.playerStats);
@@ -284,7 +289,7 @@ export function useGameLogic() {
     });
   }, [addLogEntry]);
 
-  const handlePlayerBattleAction = useCallback((action: 'attack' /* | 'item' | 'flee' */) => {
+  const handlePlayerBattleAction = useCallback((action: 'attack') => {
     setGameState(prev => {
       if (!prev.isBattleActive || !prev.currentEnemy || prev.battleMessage) return prev;
 
@@ -299,26 +304,16 @@ export function useGameLogic() {
         const playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
         newEnemyStats.health = Math.max(0, newEnemyStats.health - playerDamage);
         newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `You hit ${newEnemyStats.name} for ${playerDamage} damage.`});
-
-        if (newEnemyStats.health <= 0) {
-          playerWon = true;
-          battleEnded = true;
-        }
+        if (newEnemyStats.health <= 0) { playerWon = true; battleEnded = true; }
       }
-      // TODO: Handle 'item' and 'flee' actions
-
-      // Enemy retaliates if not defeated
+      
       if (!battleEnded) {
         const enemyAttackPower = newEnemyStats.attack;
         const playerDefensePower = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0);
         const enemyDamage = Math.max(1, enemyAttackPower - playerDefensePower);
         newPlayerStats.health = Math.max(0, newPlayerStats.health - enemyDamage);
         newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${newEnemyStats.name} hits you for ${enemyDamage} damage.`});
-
-        if (newPlayerStats.health <= 0) {
-          playerWon = false;
-          battleEnded = true;
-        }
+        if (newPlayerStats.health <= 0) { playerWon = false; battleEnded = true; }
       }
       
       if (battleEnded) {
@@ -329,72 +324,43 @@ export function useGameLogic() {
         const generalLogType = playerWon ? 'combat_win' : 'combat_loss';
         addLogEntry(generalLogType, battleResult.narration);
         
-        if (!playerWon) { // Player lost
-           return { 
-             ...prev, 
-             playerStats: { ...newPlayerStats, health: 0 }, 
-             currentEnemy: newEnemyStats, // keep enemy to show on defeat screen
-             battleLog: newBattleLog, 
-             battleMessage: "You have been defeated!", // Specific message for defeat
-             isGameOver: true, // Set game over directly
-             isBattleActive: true, // Keep battle active to show message
-           };
+        if (!playerWon) {
+           return { ...prev, playerStats: { ...newPlayerStats, health: 0 }, currentEnemy: newEnemyStats, battleLog: newBattleLog, battleMessage: "You have been defeated!", isGameOver: true, isBattleActive: true };
         }
-        // Player won
-        return {
-           ...prev, 
-           playerStats: newPlayerStats, 
-           currentEnemy: null, // Enemy is defeated
-           battleLog: newBattleLog, 
-           battleMessage: `You defeated ${newEnemyStats.name}!`, // Victory message
-           isBattleActive: true, // Keep battle active to show message then transition out
-        };
+        return { ...prev, playerStats: newPlayerStats, currentEnemy: null, battleLog: newBattleLog, battleMessage: `You defeated ${newEnemyStats.name}!`, isBattleActive: true };
       }
-
       return { ...prev, playerStats: newPlayerStats, currentEnemy: newEnemyStats, battleLog: newBattleLog.slice(-20) };
     });
   }, [addLogEntry]);
   
   const endBattleScreen = useCallback(() => {
     setGameState(prev => {
-      if (prev.playerStats.health <= 0 && !prev.isGameOver) { // Double check game over if health is 0
-        return {
-          ...prev,
-          isBattleActive: false,
-          currentEnemy: null,
-          battleLog: [],
-          battleMessage: null,
-          isGameOver: true, // Ensure game over if not already set
-        }
+      if (prev.playerStats.health <= 0 && !prev.isGameOver) {
+        return { ...prev, isBattleActive: false, currentEnemy: null, battleLog: [], battleMessage: null, isGameOver: true };
       }
-      return {
-        ...prev,
-        isBattleActive: false,
-        currentEnemy: null,
-        battleLog: [],
-        battleMessage: null,
-      };
+      return { ...prev, isBattleActive: false, currentEnemy: null, battleLog: [], battleMessage: null };
     });
   }, []);
-
 
   const handleNextDay = useCallback(async () => {
     if (gameState.isGameOver || gameState.isBattleActive) return;
     setGameState(prev => ({ ...prev, isLoadingNextDay: true, gameMessage: null }));
+    
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
     
+    // Heat update based on player activity
     let workingHeatLevels = { ...gameState.boroughHeatLevels };
     NYC_LOCATIONS.forEach(borough => {
       const activityCount = gameState.playerActivityInBoroughsThisDay[borough] || 0;
       const currentBoroughHeat = workingHeatLevels[borough] || 0;
-      let newBoroughHeat = currentBoroughHeat;
-      if (activityCount > 0) { newBoroughHeat = Math.min(5, currentBoroughHeat + 1); if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat +1 to ${newBoroughHeat}.`);} 
-      else { newBoroughHeat = Math.max(0, currentBoroughHeat - 1); if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat -1 to ${newBoroughHeat}.`);}
-      workingHeatLevels[borough] = newBoroughHeat;
+      if (activityCount > 0) workingHeatLevels[borough] = Math.min(5, currentBoroughHeat + 1);
+      else workingHeatLevels[borough] = Math.max(0, currentBoroughHeat - 1);
+      if(workingHeatLevels[borough] !== currentBoroughHeat) addLogEntry('info', `${borough} heat ${workingHeatLevels[borough] > currentBoroughHeat ? '+' : '-'}1 to ${workingHeatLevels[borough]}.`);
     });
     
-    const newDailyEvents = await getTodaysEvents();
+    // Daily events and their heat impact
+    const newDailyEvents = await getTodaysEvents(currentStats.daysPassed, workingHeatLevels);
     let eventProcessedHeatLevels = { ...workingHeatLevels };
     for (const borough in newDailyEvents) { 
       const event = newDailyEvents[borough];
@@ -404,13 +370,17 @@ export function useGameLogic() {
         if (updatedHeatByEvent !== currentEventBoroughHeat) addLogEntry('event_trigger', `${borough} heat: ${currentEventBoroughHeat} to ${updatedHeatByEvent} by ${event.name}.`);
         eventProcessedHeatLevels[borough] = updatedHeatByEvent;
       }
-      if (event) addLogEntry('event_trigger', `Today in ${borough}: ${event.name} (${event.type}) - ${event.text}`);
+      if (event) {
+        const durationText = event.durationInDays && event.durationInDays > 1 ? ` (lasts ${event.durationInDays} days)` : '';
+        addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
+      }
     }
     addLogEntry('info', `Day ${currentStats.daysPassed} in ${currentStats.currentLocation}. Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`);
 
     const eventInCurrentLocation = newDailyEvents[currentStats.currentLocation];
     let combatTriggeredByEvent = false;
 
+    // Player impact from event in current location
     if (eventInCurrentLocation?.effects.playerImpact) {
       const impact = eventInCurrentLocation.effects.playerImpact;
       toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
@@ -428,12 +398,12 @@ export function useGameLogic() {
          let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; 
          if (impact.triggerCombat === 'police_raid') opponentTypeForEvent = 'police';
          else if (impact.triggerCombat === 'gang_activity') opponentTypeForEvent = 'gang';
-         startBattle(opponentTypeForEvent); // Triggers battle screen
-         // The rest of the day's processing will pause until battle is resolved.
-         // We might need to adjust how `isLoadingNextDay` is handled if battle screen takes over.
+         else if (impact.triggerCombat === 'fiend_encounter') opponentTypeForEvent = 'fiend'; // Added specific fiend case
+         startBattle(opponentTypeForEvent);
       }
     }
     
+    // Market Update
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -443,18 +413,20 @@ export function useGameLogic() {
       newMarketPrices = applyEventPriceModifiers(newMarketPrices, eventInCurrentLocation); 
     } catch (e) { console.error(e); toast({ title: "Market Error", variant: "destructive" }); addLogEntry('info', "Market update failed."); }
     
+    // Random Combat Encounter based on heat (if not already in combat from event)
     const heatInCurrentLocation = eventProcessedHeatLevels[currentStats.currentLocation] || 0;
-    const randomEncounterChance = 0.15 + (heatInCurrentLocation * 0.05); 
+    const randomEncounterChance = 0.10 + (heatInCurrentLocation * 0.08); // Base 10%, +8% per heat level
 
-    if (!combatTriggeredByEvent && !gameState.isBattleActive && Math.random() < randomEncounterChance) { 
+    if (!combatTriggeredByEvent && !gameState.isBattleActive && currentStats.health > 0 && Math.random() < randomEncounterChance) { 
       const opponentTypes = ["police", "gang", "fiend"] as const;
       let selectedOpponentType: 'police' | 'gang' | 'fiend';
       const randomRoll = Math.random();
-      if (randomRoll < (0.33 + heatInCurrentLocation * 0.07)) selectedOpponentType = 'police'; 
-      else if (randomRoll < (0.66 + heatInCurrentLocation * 0.04)) selectedOpponentType = 'gang'; 
+      // Weighted selection based on heat
+      if (randomRoll < (0.25 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police'; // More police in high heat
+      else if (randomRoll < (0.60 + heatInCurrentLocation * 0.05)) selectedOpponentType = 'gang'; 
       else selectedOpponentType = 'fiend';
       addLogEntry('info', `Encountered ${selectedOpponentType} in ${currentStats.currentLocation}. Heat: ${heatInCurrentLocation}.`);
-      startBattle(selectedOpponentType); // Triggers battle screen
+      startBattle(selectedOpponentType);
     }
 
     // Rank update (only if not in battle and game not over)
@@ -469,9 +441,7 @@ export function useGameLogic() {
       if (currentStats.rank !== oldRank) { toast({title: "Rank Up!", description: `Promoted to ${currentStats.rank}!`}); addLogEntry('rank_up', `Promoted to ${currentStats.rank}!`); }
     }
 
-    // Final state update for the day if not entering a battle
-    // If a battle started, isLoadingNextDay might need to be false after battle ends
-    if (!gameState.isBattleActive) {
+    if (!gameState.isBattleActive) { // Final state update if not entering a battle
         setGameState(prev => ({
           ...prev,
           playerStats: currentStats,
@@ -482,22 +452,17 @@ export function useGameLogic() {
           isLoadingNextDay: false,
           playerActivityInBoroughsThisDay: {}, 
         }));
-    } else {
-      // If battle started, update stats changed before battle, but keep loading true
-      // The battle screen will eventually set isLoadingNextDay to false
+    } else { // If battle started, update stats changed before battle, but keep loading
        setGameState(prev => ({
         ...prev,
-        playerStats: currentStats, // Contains pre-battle health/cash changes from events
+        playerStats: currentStats, 
         marketPrices: newMarketPrices,
         localHeadlines: newLocalHeadlines,
         activeBoroughEvents: newDailyEvents,
         boroughHeatLevels: eventProcessedHeatLevels,
-        // isLoadingNextDay: true, // Battle screen will manage this
         playerActivityInBoroughsThisDay: {}, 
       }));
     }
-
-  // Ensure all dependencies that can change are listed
   // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle]);
 
@@ -520,9 +485,6 @@ export function useGameLogic() {
     ...gameState,
     buyDrug, sellDrug, buyWeapon, buyArmor, buyHealingItem, buyCapacityUpgrade,
     handleNextDay, resetGame, travelToLocation, fetchHeadlinesForLocation,
-    // Battle actions
-    startBattle, // Allow manual start for testing if needed
-    handlePlayerBattleAction,
-    endBattleScreen,
+    startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
