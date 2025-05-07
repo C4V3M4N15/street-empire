@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';

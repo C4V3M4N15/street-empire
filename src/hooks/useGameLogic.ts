@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -433,32 +432,40 @@ export function useGameLogic() {
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
     
-    // --- Player Activity Heat Update ---
+    // --- Player Activity Heat Update (from previous day's activity) ---
     let workingHeatLevels = { ...gameState.boroughHeatLevels };
     NYC_LOCATIONS.forEach(borough => {
       const activityCount = gameState.playerActivityInBoroughsThisDay[borough] || 0;
       const currentBoroughHeat = workingHeatLevels[borough] || 0;
-      let newBoroughHeat: number;
+      let newBoroughHeat = currentBoroughHeat;
+
       if (activityCount > 0) { // Any illegal activity (buy/sell) increases heat
         newBoroughHeat = Math.min(5, currentBoroughHeat + 1); 
-        if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat increased to ${newBoroughHeat} due to player activity.`);
-      } else {
+        if (newBoroughHeat !== currentBoroughHeat) {
+            addLogEntry('info', `${borough} heat increased to ${newBoroughHeat} (max 5) due to player activity.`);
+        }
+      } else { // No activity, heat decreases
         newBoroughHeat = Math.max(0, currentBoroughHeat - 1);
-         if (newBoroughHeat !== currentBoroughHeat) addLogEntry('info', `${borough} heat decreased to ${newBoroughHeat} due to inactivity.`);
+         if (newBoroughHeat !== currentBoroughHeat) {
+            addLogEntry('info', `${borough} heat decreased to ${newBoroughHeat} (min 0) due to inactivity.`);
+        }
       }
       workingHeatLevels[borough] = newBoroughHeat;
     });
     
     // --- Event Fetching and Event Heat Update ---
     const newDailyEvents = await getTodaysEvents(); // This fetches events for ALL boroughs
-    let eventProcessedHeatLevels = { ...workingHeatLevels };
+    let eventProcessedHeatLevels = { ...workingHeatLevels }; // Start with heat levels after player activity
 
-    for (const borough in newDailyEvents) { // Iterate through all boroughs that might have an event
+    for (const borough in newDailyEvents) { 
       const event = newDailyEvents[borough];
-      if (event?.effects.heatChange) { // If an event occurred and it has a heatChange effect
+      if (event?.effects.heatChange) { 
         const currentEventBoroughHeat = eventProcessedHeatLevels[borough] || 0;
-        eventProcessedHeatLevels[borough] = Math.max(0, Math.min(5, currentEventBoroughHeat + event.effects.heatChange));
-         if (eventProcessedHeatLevels[borough] !== currentEventBoroughHeat) addLogEntry('event_trigger', `${borough} heat changed to ${eventProcessedHeatLevels[borough]} due to event: ${event.name} (${event.type}).`);
+        const updatedHeatByEvent = Math.max(0, Math.min(5, currentEventBoroughHeat + event.effects.heatChange));
+        if (updatedHeatByEvent !== currentEventBoroughHeat) {
+            addLogEntry('event_trigger', `${borough} heat changed from ${currentEventBoroughHeat} to ${updatedHeatByEvent} due to event: ${event.name}.`);
+        }
+        eventProcessedHeatLevels[borough] = updatedHeatByEvent;
       }
       if (event) { 
         addLogEntry('event_trigger', `Today in ${borough}: ${event.name} (${event.type}) - ${event.text}`);
@@ -468,6 +475,8 @@ export function useGameLogic() {
 
     // --- Player Impact from Event in Current Location ---
     const eventInCurrentLocation = newDailyEvents[currentStats.currentLocation];
+    let combatTriggeredByEvent = false;
+
     if (eventInCurrentLocation?.effects.playerImpact) {
       const impact = eventInCurrentLocation.effects.playerImpact;
       toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
@@ -492,6 +501,7 @@ export function useGameLogic() {
         return;
       }
       if (impact.triggerCombat) {
+         combatTriggeredByEvent = true;
          let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; 
          if (impact.triggerCombat === 'police_raid') opponentTypeForEvent = 'police';
          else if (impact.triggerCombat === 'gang_activity') opponentTypeForEvent = 'gang';
@@ -531,6 +541,7 @@ export function useGameLogic() {
       newMarketPrices = await getMarketPrices(currentStats.currentLocation); 
       newLocalHeadlines = await getLocalHeadlines(currentStats.currentLocation);
       newMarketPrices = applyHeadlineImpacts(newMarketPrices, newLocalHeadlines);
+      // Apply price modifiers from the event in the player's current location
       newMarketPrices = applyEventPriceModifiers(newMarketPrices, eventInCurrentLocation); 
     } catch (error) {
       console.error("Failed to fetch market data for next day:", error);
@@ -539,17 +550,22 @@ export function useGameLogic() {
       addLogEntry('info', marketErrorMsg);
     }
     
-    // --- Generic Random Encounter ---
-    if (Math.random() < (0.15 + (eventProcessedHeatLevels[currentStats.currentLocation] || 0) * 0.05) && !eventInCurrentLocation?.effects.playerImpact?.triggerCombat) { 
+    // --- Generic Random Encounter (if not already in combat from an event) ---
+    const heatInCurrentLocation = eventProcessedHeatLevels[currentStats.currentLocation] || 0;
+    // Base chance + heat influence. Max heat (5) adds 0.25 to base 0.15 = 0.40 chance
+    const randomEncounterChance = 0.15 + (heatInCurrentLocation * 0.05); 
+
+    if (!combatTriggeredByEvent && Math.random() < randomEncounterChance) { 
       const opponentTypes = ["police", "gang", "fiend"] as const;
       let selectedOpponentType: 'police' | 'gang' | 'fiend';
-      const heatFactor = (eventProcessedHeatLevels[currentStats.currentLocation] || 0) / 5; 
+      
       const randomRoll = Math.random();
-      if (randomRoll < 0.33 + heatFactor * 0.2) selectedOpponentType = 'police'; 
-      else if (randomRoll < 0.66 + heatFactor * 0.1) selectedOpponentType = 'gang'; 
+      // Higher heat increases chance of police/gangs
+      if (randomRoll < (0.33 + heatInCurrentLocation * 0.07)) selectedOpponentType = 'police'; 
+      else if (randomRoll < (0.66 + heatInCurrentLocation * 0.04)) selectedOpponentType = 'gang'; 
       else selectedOpponentType = 'fiend';
 
-      const encounterMsg = `You've run into ${selectedOpponentType === 'police' ? 'the police' : selectedOpponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}! Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`;
+      const encounterMsg = `You've run into ${selectedOpponentType === 'police' ? 'the police' : selectedOpponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}! Heat: ${heatInCurrentLocation}.`;
       toast({ title: "Encounter!", description: encounterMsg, duration: 4000 });
       addLogEntry('info', encounterMsg);
       
