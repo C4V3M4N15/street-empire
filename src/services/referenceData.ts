@@ -10,14 +10,6 @@ export interface DrugReference {
   category: string;
 }
 
-export interface BoroughReference {
-  name: string;
-  description: string;
-  typicalHeat?: string;
-  commonEvents?: string;
-  priceProfile?: string;
-}
-
 // Updated categories based on the new drug list
 const drugCategoriesMap: Record<string, string> = {
   'Weed': 'Relaxant/Psychedelic (Soft)',
@@ -30,33 +22,39 @@ const drugCategoriesMap: Record<string, string> = {
   'Dilaudid': 'Opioid (Prescription, Very Potent)', // New
 };
 
+// Initial mapping - description will be set by the forEach loop below using static text
 export const ALL_DRUG_REFERENCE_DATA: DrugReference[] = marketAllDrugs.map(drug => ({
   name: drug.name,
   basePrice: drug.basePrice,
   volatility: drug.volatility,
-  description: `A commonly traded illicit substance. Base price is around $${drug.basePrice}. Known for its ${drug.volatility ? (drug.volatility * 100).toFixed(0) : 'N/A'}% price volatility.`,
+  description: '', // Placeholder: will be filled with static description from drugDescriptions
   category: drugCategoriesMap[drug.name] || 'General Illicit',
 }));
 
-// Enhance descriptions for the new set of drugs
-const drugDescriptions: Record<string, Partial<DrugReference>> = {
+// Static descriptions for each drug. These will not change based on market fluctuations.
+const drugDescriptions: Record<string, { description: string, category?: string }> = {
   'Weed': { description: 'Popular psychoactive plant. Relatively low cost and often high demand. Good entry point.', category: 'Relaxant/Psychedelic (Soft)' },
   'Mushrooms': { description: 'Naturally occurring psychedelics. Effects can vary. Market can be niche but profitable.', category: 'Psychedelic (Organic)' },
   'LSD': { description: 'Potent synthetic psychedelic. Small doses, big effects. Market can be volatile.', category: 'Psychedelic (Synthetic, Potent)' },
   'Meth': { description: 'Powerful synthetic stimulant, known for its intense high and addictive properties. High risk, high reward.', category: 'Stimulant (Hard, Synthetic)' },
-  'Crack': { description: 'Smokable form of cocaine. Cheaper, intense but short high, highly addictive. Fast turnover. Base price now $60.', category: 'Stimulant (Cheap, Addictive)' },
+  'Crack': { description: 'Smokable form of cocaine. Cheaper, intense but short high, highly addictive. Fast turnover.', category: 'Stimulant (Cheap, Addictive)' },
   'Heroin': { description: 'Highly addictive opioid. Dangerous but can be very profitable due to dependency.', category: 'Opioid (Hard, Addictive)' },
   'OxyContin': { description: 'Powerful prescription opioid painkiller, often diverted to the black market. High street value.', category: 'Opioid (Prescription, Expensive)' },
   'Dilaudid': { description: 'Hydromorphone, an extremely potent prescription opioid. Very high risk and high value.', category: 'Opioid (Prescription, Very Potent)' },
 };
 
+// Populate the descriptions and categories from the static drugDescriptions object
 ALL_DRUG_REFERENCE_DATA.forEach(drugRef => {
-  if (drugDescriptions[drugRef.name]) {
-    Object.assign(drugRef, drugDescriptions[drugRef.name]);
+  const staticInfo = drugDescriptions[drugRef.name];
+  if (staticInfo?.description) {
+    drugRef.description = staticInfo.description;
+  } else {
+    // Fallback to a generic static description if no specific one is found
+    drugRef.description = 'A commonly traded illicit substance.';
   }
-  // Ensure the generic description also reflects the updated base price from marketAllDrugs
-  drugRef.description = `A commonly traded illicit substance. Base price is around $${drugRef.basePrice}. Known for its ${drugRef.volatility ? (drugRef.volatility * 100).toFixed(0) : 'N/A'}% price volatility. ${drugDescriptions[drugRef.name]?.description || ''}`;
-
+  if (staticInfo?.category) {
+    drugRef.category = staticInfo.category;
+  }
 });
 
 
