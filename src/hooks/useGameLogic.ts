@@ -2,20 +2,21 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon, Armor } from '@/types/game';
+import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Weapon, Armor, HealingItem } from '@/types/game';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { simulateCombat, type CombatOutcome } from '@/services/combat';
-import { getShopWeapons, getShopArmor } from '@/services/shopItems'; // Import shop items service
+import { getShopWeapons, getShopArmor, getShopHealingItems } from '@/services/shopItems';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique log entry IDs
 
 const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
 const PLAYER_BASE_DAMAGE = 1; // Damage with fists
 const PLAYER_BASE_PROTECTION = 0; // Base protection without armor
+const MAX_PLAYER_HEALTH = 100;
 
 const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
-  health: 100,
+  health: MAX_PLAYER_HEALTH,
   cash: 1000,
   inventory: {},
   reputation: 0,
@@ -38,8 +39,9 @@ export function useGameLogic() {
     isLoadingMarket: true,
     isGameOver: false,
     gameMessage: null,
-    availableWeapons: [], // Initialize available weapons
-    availableArmor: [], // Initialize available armor
+    availableWeapons: [],
+    availableArmor: [],
+    availableHealingItems: [], // Initialize available healing items
   });
 
   const { toast } = useToast();
@@ -54,11 +56,12 @@ export function useGameLogic() {
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
     try {
-      const [prices, headlines, weapons, armor] = await Promise.all([
+      const [prices, headlines, weapons, armor, healingItems] = await Promise.all([
         getMarketPrices(INITIAL_PLAYER_STATS.currentLocation),
         getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation),
-        getShopWeapons(), // Fetch shop weapons
-        getShopArmor(), // Fetch shop armor
+        getShopWeapons(),
+        getShopArmor(),
+        getShopHealingItems(), // Fetch shop healing items
       ]);
       
       const adjustedPrices = applyHeadlineImpacts(prices, headlines);
@@ -66,8 +69,9 @@ export function useGameLogic() {
         ...prev,
         marketPrices: adjustedPrices,
         localHeadlines: headlines,
-        availableWeapons: weapons, 
+        availableWeapons: weapons,
         availableArmor: armor,
+        availableHealingItems: healingItems, // Set healing items
         isLoadingMarket: false,
       }));
       addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market and shop data loaded.`);
@@ -93,7 +97,7 @@ export function useGameLogic() {
       });
       return {
         ...drugPrice,
-        price: Math.max(1, Math.round(newPrice)), 
+        price: Math.max(1, Math.round(newPrice)),
       };
     });
   };
@@ -127,7 +131,7 @@ export function useGameLogic() {
       };
 
       const newCash = currentStats.cash - cost;
-      const newReputation = currentStats.reputation + Math.floor(quantity / 10) + 1; 
+      const newReputation = currentStats.reputation + Math.floor(quantity / 10) + 1;
 
       const successMsg = `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.`;
       toast({ title: "Purchase Successful", description: successMsg, variant: "default"});
@@ -171,14 +175,14 @@ export function useGameLogic() {
       if (newQuantity > 0) {
         newInventory[drugName] = {
           quantity: newQuantity,
-          totalCost: Math.max(0, newTotalCost), 
+          totalCost: Math.max(0, newTotalCost),
         };
       } else {
         delete newInventory[drugName];
       }
 
       const newCash = currentStats.cash + earnings;
-      const newReputation = currentStats.reputation + Math.floor(quantity / 5) + 1; 
+      const newReputation = currentStats.reputation + Math.floor(quantity / 5) + 1;
 
       const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
       toast({ title: "Sale Successful", description: successMsg, variant: "default" });
@@ -254,6 +258,51 @@ export function useGameLogic() {
     });
   }, [toast, addLogEntry]);
 
+  const buyHealingItem = useCallback((itemToBuy: HealingItem) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      if (currentStats.cash < itemToBuy.price) {
+        toast({ title: "Not Enough Cash", description: `You need $${itemToBuy.price.toLocaleString()} for ${itemToBuy.name}.`, variant: "destructive" });
+        return prev;
+      }
+
+      if (currentStats.health >= MAX_PLAYER_HEALTH) {
+        toast({ title: "Full Health", description: "You are already at full health.", variant: "default" });
+        return prev;
+      }
+
+      let newHealth = currentStats.health;
+      if (itemToBuy.isFullHeal) {
+        newHealth = MAX_PLAYER_HEALTH;
+      } else if (itemToBuy.healAmount) {
+        newHealth = Math.min(MAX_PLAYER_HEALTH, currentStats.health + itemToBuy.healAmount);
+      }
+      
+      const healedAmount = newHealth - currentStats.health;
+      if (healedAmount <= 0) { // Should be caught by full health check, but as a safeguard
+         toast({ title: "No Effect", description: `${itemToBuy.name} would provide no healing.`, variant: "default" });
+         return prev;
+      }
+
+      const newCash = currentStats.cash - itemToBuy.price;
+      const successMsg = `Used ${itemToBuy.name} for $${itemToBuy.price.toLocaleString()}. Healed ${healedAmount} HP.`;
+      toast({ title: "Healing Applied!", description: successMsg });
+      addLogEntry('shop_healing_purchase', successMsg);
+      addLogEntry('health_update', `Health increased by ${healedAmount} to ${newHealth}.`);
+
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          health: newHealth,
+        }
+      };
+    });
+  }, [toast, addLogEntry]);
+
+
   const travelToLocation = useCallback((targetLocation: string) => {
     if (gameState.playerStats.currentLocation === targetLocation) {
         toast({ title: "Already There", description: `You are already in ${targetLocation}.`, variant: "default" });
@@ -269,7 +318,6 @@ export function useGameLogic() {
                 ...prev.playerStats,
                 currentLocation: targetLocation,
             },
-            // Market data for the new location will be fetched on "Next Day"
         };
     });
   }, [toast, addLogEntry, gameState.playerStats.currentLocation]);
@@ -295,7 +343,6 @@ export function useGameLogic() {
     currentStats.daysPassed += 1;
     addLogEntry('info', `Day ${currentStats.daysPassed} begins in ${currentStats.currentLocation}.`);
     
-    // Market Update for the current location
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -309,8 +356,7 @@ export function useGameLogic() {
       addLogEntry('info', marketErrorMsg);
     }
     
-    // Random Event: Combat
-    if (Math.random() < 0.3) { // 30% chance of combat
+    if (Math.random() < 0.3) { 
       const opponentTypes = ["police", "gang", "fiend"] as const;
       const opponentType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
       const encounterMsg = `You've run into ${opponentType === 'police' ? 'the police' : opponentType === 'gang' ? 'a rival gang' : 'a desperate fiend'} in ${currentStats.currentLocation}!`;
@@ -318,12 +364,8 @@ export function useGameLogic() {
       addLogEntry('info', encounterMsg);
       
       try {
-        // Pass player base damage and weapon damage for combat simulation
-        const playerTotalDamage = PLAYER_BASE_DAMAGE + (currentStats.equippedWeapon?.damageBonus || 0);
-        // Note: Player's protection from armor is implicitly handled if `simulateCombat` uses playerStats, or it can be passed explicitly.
-        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats); 
+        const combatOutcome: CombatOutcome = await simulateCombat(opponentType, currentStats);
         
-        // Apply damage reduction from armor if combat service doesn't handle it
         let actualHealthLost = combatOutcome.healthLost;
         if (currentStats.equippedArmor) {
             actualHealthLost = Math.max(0, combatOutcome.healthLost - currentStats.equippedArmor.protectionBonus);
@@ -362,23 +404,21 @@ export function useGameLogic() {
       }
     }
 
-    // Check for Game Over due to health
     if (currentStats.health <= 0) {
       const gameOverMsg = "Your health reached 0. Game Over.";
       setGameState(prev => ({
         ...prev,
-        playerStats: { ...currentStats, health: 0 }, 
+        playerStats: { ...currentStats, health: 0 },
         isGameOver: true,
         isLoadingNextDay: false,
-        marketPrices: newMarketPrices, 
+        marketPrices: newMarketPrices,
         localHeadlines: newLocalHeadlines,
       }));
       toast({ title: "Game Over", description: gameOverMsg, variant: "destructive" });
       addLogEntry('game_over', gameOverMsg);
-      return; 
+      return;
     }
     
-    // Rank Update
     const oldRank = currentStats.rank;
     if (currentStats.cash > 50000 && currentStats.reputation > 200 && currentStats.rank !== 'Kingpin') currentStats.rank = 'Kingpin';
     else if (currentStats.cash > 25000 && currentStats.reputation > 100 && !['Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Baron';
@@ -410,22 +450,24 @@ export function useGameLogic() {
       localHeadlines: [],
       eventLog: [],
       isLoadingNextDay: false,
-      isLoadingMarket: true, 
+      isLoadingMarket: true,
       isGameOver: false,
       gameMessage: null,
-      availableWeapons: [], 
-      availableArmor: [], // Reset armor
+      availableWeapons: [],
+      availableArmor: [],
+      availableHealingItems: [],
     });
     addLogEntry('info', 'Game reset.');
-    fetchInitialData(); 
+    fetchInitialData();
   }, [fetchInitialData, addLogEntry]);
 
   return {
-    ...gameState, 
+    ...gameState,
     buyDrug,
     sellDrug,
     buyWeapon,
-    buyArmor, // Expose buyArmor
+    buyArmor,
+    buyHealingItem, // Expose buyHealingItem
     handleNextDay,
     resetGame,
     travelToLocation,

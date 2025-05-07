@@ -1,5 +1,5 @@
 
-import type { Weapon, Armor } from '@/types/game';
+import type { Weapon, Armor, HealingItem } from '@/types/game';
 
 export const AVAILABLE_WEAPONS: Weapon[] = [
   { name: 'Switchblade', price: 100, damageBonus: 3 },
@@ -15,6 +15,12 @@ export const AVAILABLE_ARMOR: Armor[] = [
   { name: 'Tac Vest', price: 2200, protectionBonus: 10 },
   { name: 'Kevlar', price: 4800, protectionBonus: 18 },
   { name: 'John Wick Suit', price: 9500, protectionBonus: 30 },
+];
+
+export const AVAILABLE_HEALING_ITEMS: HealingItem[] = [
+  { id: 'doctor_visit', name: 'Doctor Visit', price: 100, healAmount: 10, description: 'Heals 10 HP.' },
+  { id: 'restful_visit', name: 'Restful Visit', price: 500, healAmount: 50, description: 'Heals 50 HP.' },
+  { id: 'first_aid_kit', name: 'First Aid Kit', price: 1000, isFullHeal: true, description: 'Restores to full health.' },
 ];
 
 /**
@@ -37,4 +43,15 @@ export async function getShopArmor(): Promise<Armor[]> {
   // Simulate API call delay if this were dynamic
   await new Promise(resolve => setTimeout(resolve, 100));
   return AVAILABLE_ARMOR;
+}
+
+/**
+ * Retrieves the list of available healing items in the shop.
+ * Currently returns a static list.
+ * @returns An array of HealingItem objects.
+ */
+export async function getShopHealingItems(): Promise<HealingItem[]> {
+  // Simulate API call delay if this were dynamic
+  await new Promise(resolve => setTimeout(resolve, 100));
+  return AVAILABLE_HEALING_ITEMS;
 }

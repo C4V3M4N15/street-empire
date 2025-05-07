@@ -2,12 +2,12 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
-import type { Weapon, Armor } from '@/types/game'; // Import Armor type
+import type { Weapon, Armor, HealingItem } from '@/types/game'; // Import HealingItem type
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus } from 'lucide-react'; // Added PackagePlus
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical } from 'lucide-react'; // Added PackagePlus, BriefcaseMedical
 import type { PlayerStats } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -19,12 +19,14 @@ interface MarketInfoCardProps {
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
-  availableWeapons: Weapon[]; 
-  availableArmor: Armor[]; // Add availableArmor prop
+  availableWeapons: Weapon[];
+  availableArmor: Armor[];
+  availableHealingItems: HealingItem[]; // Add availableHealingItems prop
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
   buyWeapon: (weapon: Weapon) => void;
-  buyArmor: (armor: Armor) => void; // Add buyArmor prop
+  buyArmor: (armor: Armor) => void;
+  buyHealingItem: (item: HealingItem) => void; // Add buyHealingItem prop
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
@@ -45,17 +47,21 @@ const HeadlineItem: React.FC<{ headline: string; impact: number }> = ({ headline
   );
 };
 
-export function MarketInfoCard({ 
-  marketPrices, 
-  localHeadlines, 
-  isLoading, 
-  playerStats, 
+const MAX_PLAYER_HEALTH = 100; // Assuming max health is 100, consistent with useGameLogic
+
+export function MarketInfoCard({
+  marketPrices,
+  localHeadlines,
+  isLoading,
+  playerStats,
   availableWeapons,
   availableArmor,
-  buyDrug, 
+  availableHealingItems,
+  buyDrug,
   sellDrug,
   buyWeapon,
   buyArmor,
+  buyHealingItem,
   travelToLocation,
   fetchHeadlinesForLocation
 }: MarketInfoCardProps) {
@@ -69,7 +75,7 @@ export function MarketInfoCard({
       setTransactionQuantities(prev => ({ ...prev, [drugName]: value }));
     }
   };
-  
+
   const getNumericQuantity = (drugName: string): number => {
     const valStr = transactionQuantities[drugName] || "";
     if (valStr === "") return 0;
@@ -135,7 +141,7 @@ export function MarketInfoCard({
                     <Loader2 className="h-8 w-8 animate-spin text-accent" />
                   </div>
                 )}
-                
+
                 <h3 className="text-md font-semibold mb-2 flex items-center">
                   <DollarSign className="mr-2 h-4 w-4 text-accent" /> Drug Prices & Inventory ({playerStats.currentLocation})
                 </h3>
@@ -211,7 +217,7 @@ export function MarketInfoCard({
                 ) : (
                   <p className="text-xs text-muted-foreground py-3">No price data available for {playerStats.currentLocation}.</p>
                 )}
-                
+
                 <h3 className="text-md font-semibold mt-4 mb-1.5 flex items-center">
                   <Newspaper className="mr-2 h-4 w-4 text-accent" /> Local Headlines ({playerStats.currentLocation})
                 </h3>
@@ -228,7 +234,7 @@ export function MarketInfoCard({
         </TabsContent>
         <TabsContent value="travel">
           <CardContent className="p-4 pt-3">
-            <NycMap 
+            <NycMap
               currentLocation={playerStats.currentLocation}
               onTravel={travelToLocation}
               fetchHeadlinesForLocation={fetchHeadlinesForLocation}
@@ -242,7 +248,7 @@ export function MarketInfoCard({
               <Store className="mr-2 h-5 w-5 text-primary-foreground" /> The Git'n Place
             </h3>
             <p className="text-xs text-muted-foreground mb-3">All your less-than-legal needs, in one shady spot.</p>
-            
+
             <Tabs defaultValue="weapons" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-3">
                     <TabsTrigger value="weapons" className="flex items-center text-xs sm:text-sm">
@@ -252,7 +258,7 @@ export function MarketInfoCard({
                         <ShieldCheck className="mr-1 sm:mr-2 h-4 w-4" /> Armor
                     </TabsTrigger>
                     <TabsTrigger value="healing" className="flex items-center text-xs sm:text-sm">
-                        <ShieldPlus className="mr-1 sm:mr-2 h-4 w-4" /> Healing
+                        <BriefcaseMedical className="mr-1 sm:mr-2 h-4 w-4" /> Healing
                     </TabsTrigger>
                     <TabsTrigger value="capacity" className="flex items-center text-xs sm:text-sm">
                         <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Upgrades
@@ -312,7 +318,29 @@ export function MarketInfoCard({
                 </TabsContent>
 
                 <TabsContent value="healing" className="mt-0">
-                    <p className="text-xs text-muted-foreground py-3 text-center">Healing items coming soon!</p>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {availableHealingItems.length > 0 ? (
+                        availableHealingItems.map(item => (
+                          <div key={item.id} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                            <div>
+                              <p className="text-sm font-medium">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">{item.description} | Cost: ${item.price.toLocaleString()}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => buyHealingItem(item)}
+                              disabled={isLoading || playerStats.cash < item.price || playerStats.health >= MAX_PLAYER_HEALTH}
+                              className="text-xs px-3"
+                            >
+                              {playerStats.health >= MAX_PLAYER_HEALTH ? 'Full HP' : 'Use'}
+                            </Button>
+                          </div>
+                        ))
+                      ) : (
+                         <p className="text-xs text-muted-foreground py-3 text-center">No healing services available.</p>
+                      )}
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="capacity" className="mt-0">
@@ -325,4 +353,3 @@ export function MarketInfoCard({
     </Card>
   );
 }
-

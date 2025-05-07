@@ -1,13 +1,13 @@
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
 
-export type PlayerRank = 
-  | 'Rookie' 
-  | 'Peddler' 
-  | 'Dealer' 
-  | 'Supplier' 
-  | 'Distributor' 
-  | 'Baron' 
+export type PlayerRank =
+  | 'Rookie'
+  | 'Peddler'
+  | 'Dealer'
+  | 'Supplier'
+  | 'Distributor'
+  | 'Baron'
   | 'Kingpin';
 
 export interface InventoryItem {
@@ -27,6 +27,15 @@ export interface Armor {
   protectionBonus: number; // Represents damage reduction or protection points
 }
 
+export interface HealingItem {
+  id: string; // Unique ID for the item
+  name: string;
+  price: number;
+  description: string;
+  healAmount?: number; // Fixed amount of health to restore
+  isFullHeal?: boolean; // True if this item restores to full health
+}
+
 export interface PlayerStats {
   name: string;
   health: number;
@@ -41,17 +50,18 @@ export interface PlayerStats {
   equippedArmor: Armor | null; // Player's current armor, null for no armor
 }
 
-export type LogEventType = 
-  | 'buy' 
-  | 'sell' 
-  | 'travel' 
-  | 'combat_win' 
-  | 'combat_loss' 
+export type LogEventType =
+  | 'buy'
+  | 'sell'
+  | 'travel'
+  | 'combat_win'
+  | 'combat_loss'
   | 'health_update' // More generic for health changes
   | 'rank_up'
   | 'game_over'
   | 'shop_weapon_purchase'
-  | 'shop_armor_purchase' // New event type for buying armor
+  | 'shop_armor_purchase'
+  | 'shop_healing_purchase' // New event type for buying healing items
   | 'info'; // General information
 
 export interface LogEntry {
@@ -69,8 +79,8 @@ export interface GameState {
   isLoadingNextDay: boolean;
   isLoadingMarket: boolean;
   isGameOver: boolean;
-  gameMessage: string | null; 
+  gameMessage: string | null;
   availableWeapons: Weapon[]; // Weapons available in the shop
   availableArmor: Armor[]; // Armor available in the shop
+  availableHealingItems: HealingItem[]; // Healing items available in the shop
 }
-

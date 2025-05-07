@@ -16,7 +16,8 @@ export default function StreetEmpirePage() {
     marketPrices,
     localHeadlines,
     availableWeapons,
-    availableArmor, // Add this
+    availableArmor,
+    availableHealingItems, // Add this
     eventLog,
     isLoadingNextDay,
     isLoadingMarket,
@@ -24,7 +25,8 @@ export default function StreetEmpirePage() {
     buyDrug,
     sellDrug,
     buyWeapon,
-    buyArmor, // Add this
+    buyArmor,
+    buyHealingItem, // Add this
     handleNextDay,
     resetGame,
     travelToLocation,
@@ -57,27 +59,29 @@ export default function StreetEmpirePage() {
           <PlayerStatsCard playerStats={playerStats} />
         </div>
         <div className="lg:col-span-2 space-y-6">
-          <MarketInfoCard 
-            marketPrices={marketPrices} 
-            localHeadlines={localHeadlines} 
-            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0)}
+          <MarketInfoCard
+            marketPrices={marketPrices}
+            localHeadlines={localHeadlines}
+            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0 && availableHealingItems.length === 0)}
             playerStats={playerStats}
             availableWeapons={availableWeapons}
-            availableArmor={availableArmor} // Pass down
+            availableArmor={availableArmor}
+            availableHealingItems={availableHealingItems} // Pass down
             buyDrug={buyDrug}
             sellDrug={sellDrug}
             buyWeapon={buyWeapon}
-            buyArmor={buyArmor} // Pass down
+            buyArmor={buyArmor}
+            buyHealingItem={buyHealingItem} // Pass down
             travelToLocation={travelToLocation}
             fetchHeadlinesForLocation={fetchHeadlinesForLocation}
           />
            <EventLogCard eventLog={eventLog} />
         </div>
       </main>
-      
+
       <div className="w-full max-w-3xl mt-6">
-         <GameControls 
-          onNextDay={handleNextDay} 
+         <GameControls
+          onNextDay={handleNextDay}
           isLoading={isLoadingNextDay}
           isGameOver={isGameOver}
           onResetGame={resetGame}
