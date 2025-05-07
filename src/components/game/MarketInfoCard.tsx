@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent, ArrowUpCircle, ArrowDownCircle, MinusCircle } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent, Arrow Icons
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent, ArrowUpCircle, ArrowDownCircle, MinusCircle, CreditCard } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent, Arrow Icons, CreditCard
 import type { PlayerStats, GameState } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -290,7 +290,7 @@ export function MarketInfoCard({
             <p className="text-xs text-muted-foreground mb-3">All your less-than-legal needs, in one shady spot.</p>
 
             <Tabs defaultValue="weapons" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-3">
+                <TabsList className="grid w-full grid-cols-5 mb-3"> {/* Updated grid-cols-4 to grid-cols-5 */}
                     <TabsTrigger value="weapons" className="flex items-center text-xs sm:text-sm">
                         <Sword className="mr-1 sm:mr-2 h-4 w-4" /> Weapons
                     </TabsTrigger>
@@ -302,6 +302,9 @@ export function MarketInfoCard({
                     </TabsTrigger>
                     <TabsTrigger value="capacity" className="flex items-center text-xs sm:text-sm">
                         <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Capacity
+                    </TabsTrigger>
+                    <TabsTrigger value="iap" className="flex items-center text-xs sm:text-sm"> {/* New TabTrigger */}
+                        <CreditCard className="mr-1 sm:mr-2 h-4 w-4" /> IAP
                     </TabsTrigger>
                 </TabsList>
 
@@ -409,6 +412,16 @@ export function MarketInfoCard({
                     )}
                   </div>
                 </TabsContent>
+                <TabsContent value="iap" className="mt-0"> {/* New TabsContent */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1 p-2.5">
+                    <p className="text-sm font-medium text-center py-4 text-muted-foreground">
+                      In-App Purchases - Coming Soon!
+                    </p>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Enhance your empire with exclusive boosts and items.
+                    </p>
+                  </div>
+                </TabsContent>
             </Tabs>
           </CardContent>
         </TabsContent>
@@ -421,3 +434,4 @@ export function MarketInfoCard({
     </Card>
   );
 }
+
