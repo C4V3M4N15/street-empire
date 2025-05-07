@@ -271,16 +271,20 @@ export function useGameLogic() {
         return prev;
       }
 
-      let newHealth = currentStats.health;
+      let healthToRestore = 0;
       if (itemToBuy.isFullHeal) {
-        newHealth = MAX_PLAYER_HEALTH;
-      } else if (itemToBuy.healAmount) {
-        newHealth = Math.min(MAX_PLAYER_HEALTH, currentStats.health + itemToBuy.healAmount);
+        healthToRestore = MAX_PLAYER_HEALTH - currentStats.health;
+      } else if (itemToBuy.isPercentageHeal && itemToBuy.healAmount) {
+        healthToRestore = Math.round(MAX_PLAYER_HEALTH * (itemToBuy.healAmount / 100));
+      } else if (itemToBuy.healAmount) { // Fixed amount heal (legacy, if any item uses it)
+         healthToRestore = itemToBuy.healAmount;
       }
       
+      const newHealth = Math.min(MAX_PLAYER_HEALTH, currentStats.health + healthToRestore);
       const healedAmount = newHealth - currentStats.health;
-      if (healedAmount <= 0) { // Should be caught by full health check, but as a safeguard
-         toast({ title: "No Effect", description: `${itemToBuy.name} would provide no healing.`, variant: "default" });
+
+      if (healedAmount <= 0) {
+         toast({ title: "No Effect", description: `${itemToBuy.name} would provide no significant healing at your current health.`, variant: "default" });
          return prev;
       }
 

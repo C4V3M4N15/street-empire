@@ -2,25 +2,27 @@
 import type { Weapon, Armor, HealingItem } from '@/types/game';
 
 export const AVAILABLE_WEAPONS: Weapon[] = [
-  { name: 'Switchblade', price: 150, damageBonus: 3 },      // Was $100
-  { name: '9MM', price: 750, damageBonus: 10 },            // Was $500
-  { name: 'Switch (SMG)', price: 3000, damageBonus: 20 },   // Was $2500
-  { name: 'Combat Shotty', price: 7000, damageBonus: 35 },  // Was $5000
-  { name: 'RPG', price: 15000, damageBonus: 50 },           // Was $10000
+  { name: 'Switchblade', price: 100, damageBonus: 3 },
+  { name: 'Baseball Bat', price: 250, damageBonus: 6 },
+  { name: '9MM', price: 750, damageBonus: 10 },
+  { name: 'Switch (SMG)', price: 3000, damageBonus: 20 },
+  { name: 'Combat Shotty', price: 6000, damageBonus: 35 },
+  { name: 'RPG', price: 12000, damageBonus: 50 },
 ];
 
 export const AVAILABLE_ARMOR: Armor[] = [
-  { name: 'Jacket', price: 120, protectionBonus: 2 },             // Was $100
-  { name: 'Leather Jacket', price: 600, protectionBonus: 5 },    // Was $450
-  { name: 'Tac Vest', price: 2800, protectionBonus: 10 },        // Was $2200
-  { name: 'Kevlar', price: 6500, protectionBonus: 18 },          // Was $4800
-  { name: 'John Wick Suit', price: 13000, protectionBonus: 30 }, // Was $9500
+  { name: 'Jacket', price: 150, protectionBonus: 2 },
+  { name: 'Leather Jacket', price: 500, protectionBonus: 5 },
+  { name: 'Bike Helmet & Pads', price: 1000, protectionBonus: 8 },
+  { name: 'Tac Vest', price: 2800, protectionBonus: 12 },
+  { name: 'Kevlar', price: 5500, protectionBonus: 20 },
+  { name: 'John Wick Suit', price: 11000, protectionBonus: 30 },
 ];
 
 export const AVAILABLE_HEALING_ITEMS: HealingItem[] = [
-  { id: 'doctor_visit', name: 'Doctor Visit', price: 100, healAmount: 10, description: 'Heals 10 HP.' },
-  { id: 'restful_visit', name: 'Restful Visit', price: 500, healAmount: 50, description: 'Heals 50 HP.' },
-  { id: 'first_aid_kit', name: 'First Aid Kit', price: 1000, isFullHeal: true, description: 'Restores to full health.' },
+  { id: 'urgent_care_patch_up', name: 'Urgent Care Patch-up', price: 150, healAmount: 25, isPercentageHeal: true, description: 'Heals 25% of max HP.' },
+  { id: 'back_alley_doc', name: 'Back Alley Doc', price: 600, healAmount: 60, isPercentageHeal: true, description: 'Heals 60% of max HP.' },
+  { id: 'trauma_kit', name: 'Trauma Kit', price: 1200, isFullHeal: true, description: 'Restores to full health.' },
 ];
 
 /**

@@ -32,7 +32,8 @@ export interface HealingItem {
   name: string;
   price: number;
   description: string;
-  healAmount?: number; // Fixed amount of health to restore
+  healAmount?: number;    // Amount if fixed OR percentage value if isPercentageHeal is true
+  isPercentageHeal?: boolean; // True if healAmount represents a percentage of max health
   isFullHeal?: boolean; // True if this item restores to full health
 }
 
@@ -84,3 +85,4 @@ export interface GameState {
   availableArmor: Armor[]; // Armor available in the shop
   availableHealingItems: HealingItem[]; // Healing items available in the shop
 }
+

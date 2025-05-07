@@ -28,37 +28,37 @@ export interface LocalHeadline {
 }
 
 const ALL_DRUGS = [
-  { name: 'Weed', basePrice: 250, volatility: 0.3 },
-  { name: 'Cocaine', basePrice: 13000, volatility: 0.45 }, // Adjusted
-  { name: 'Heroin', basePrice: 9000, volatility: 0.4 },    // Adjusted
-  { name: 'MDMA', basePrice: 1500, volatility: 0.3 },     // Adjusted
-  { name: 'LSD', basePrice: 800, volatility: 0.35 },       // Adjusted
-  { name: 'Meth', basePrice: 4500, volatility: 0.5 },      // Adjusted
-  { name: 'Mushrooms', basePrice: 400, volatility: 0.3 },
-  { name: 'Opium', basePrice: 5000, volatility: 0.35 },     // Adjusted
-  { name: 'Ketamine', basePrice: 2000, volatility: 0.35 },  // Adjusted
-  { name: 'PCP', basePrice: 1200, volatility: 0.4 },       // Adjusted
-  { name: 'Xanax', basePrice: 50, volatility: 0.2 },       // Adjusted
-  { name: 'Valium', basePrice: 40, volatility: 0.15 },      // Adjusted
-  { name: 'Steroids', basePrice: 250, volatility: 0.3 },
-  { name: 'Fentanyl', basePrice: 15000, volatility: 0.55 }, // Adjusted
-  { name: 'Crack', basePrice: 1000, volatility: 0.45 },    // Adjusted
-  { name: 'Spice', basePrice: 150, volatility: 0.35 },
-  { name: 'GHB', basePrice: 600, volatility: 0.4 },
-  { name: 'Rohypnol', basePrice: 200, volatility: 0.3 },
-  { name: 'Adderall', basePrice: 100, volatility: 0.25 },
-  { name: 'OxyContin', basePrice: 2500, volatility: 0.45 },
-  { name: 'Codeine Syrup', basePrice: 350, volatility: 0.3 },
-  { name: 'Poppers (Amyl Nitrite)', basePrice: 80, volatility: 0.2 },
-  { name: 'DMT', basePrice: 3000, volatility: 0.5 },
-  { name: 'Mescaline', basePrice: 1200, volatility: 0.4 },
-  { name: 'Ayahuasca Brew', basePrice: 1500, volatility: 0.45 },
+  { name: 'Weed', basePrice: 150, volatility: 0.35 },
+  { name: 'Cocaine', basePrice: 10000, volatility: 0.55 },
+  { name: 'Heroin', basePrice: 7000, volatility: 0.5 },
+  { name: 'MDMA', basePrice: 1000, volatility: 0.35 },
+  { name: 'LSD', basePrice: 500, volatility: 0.4 },
+  { name: 'Meth', basePrice: 3500, volatility: 0.55 },
+  { name: 'Mushrooms', basePrice: 250, volatility: 0.35 },
+  { name: 'Opium', basePrice: 4500, volatility: 0.4 }, // Unchanged from previous
+  { name: 'Ketamine', basePrice: 1800, volatility: 0.38 }, // Unchanged
+  { name: 'PCP', basePrice: 1000, volatility: 0.42 }, // Unchanged
+  { name: 'Xanax', basePrice: 40, volatility: 0.25 }, // Unchanged
+  { name: 'Valium', basePrice: 30, volatility: 0.2 }, // Unchanged
+  { name: 'Steroids', basePrice: 250, volatility: 0.3 }, // Unchanged
+  { name: 'Fentanyl', basePrice: 12000, volatility: 0.65 },
+  { name: 'Crack', basePrice: 800, volatility: 0.5 }, // Unchanged
+  { name: 'Spice', basePrice: 150, volatility: 0.35 }, // Unchanged
+  { name: 'GHB', basePrice: 600, volatility: 0.4 }, // Unchanged
+  { name: 'Rohypnol', basePrice: 200, volatility: 0.3 }, // Unchanged
+  { name: 'Adderall', basePrice: 100, volatility: 0.25 }, // Unchanged
+  { name: 'OxyContin', basePrice: 2500, volatility: 0.45 }, // Unchanged
+  { name: 'Codeine Syrup', basePrice: 350, volatility: 0.3 }, // Unchanged
+  { name: 'Poppers (Amyl Nitrite)', basePrice: 80, volatility: 0.2 }, // Unchanged
+  { name: 'DMT', basePrice: 3000, volatility: 0.5 }, // Unchanged
+  { name: 'Mescaline', basePrice: 1200, volatility: 0.4 }, // Unchanged
+  { name: 'Ayahuasca Brew', basePrice: 1500, volatility: 0.45 }, // Unchanged
 ];
 
 const ALL_HEADLINES = [
-  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.35, positive: true }, // Adjusted impact
+  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
   { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
-  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.3, positive: false }, // Adjusted impact
+  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.4, positive: false },
   { text: "Celebrity overdoses on {drug} in a Manhattan penthouse. Public outcry!", impactDrugSpecific: true, impactFactor: -0.2, positive: false },
   { text: "Economic boom in NYC! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
   { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
@@ -96,19 +96,14 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
 
-  // Determine number of drugs to show (e.g., 7 to 12)
-  const numDrugsToShow = 10 + Math.floor(Math.random() * 6); // Increased to 10-15 drugs
+  // Determine number of drugs to show (e.g., 10 to 15)
+  const numDrugsToShow = 10 + Math.floor(Math.random() * 6);
   const shuffledDrugs = [...ALL_DRUGS].sort(() => 0.5 - Math.random());
   const selectedDrugs = shuffledDrugs.slice(0, numDrugsToShow);
 
   return selectedDrugs.map(drug => {
-    const randomFactor = gaussianRandom(); // Use a value from standard normal distribution
-    // Scale and shift the randomFactor to be more suitable for price fluctuation.
-    // For example, clamp it or use a smaller multiplier if volatility is high.
-    // A typical gaussianRandom() output is mostly between -3 and 3.
-    // We want volatility to represent a percentage, e.g., 0.3 means +/-30% potentially.
-    // So, randomFactor * drug.volatility is a direct way.
-    const priceFluctuation = randomFactor * drug.volatility;
+    // Generate a random fluctuation using a Gaussian distribution
+    const priceFluctuation = gaussianRandom() * drug.volatility * 0.5; // Reduced impact of gaussian for smoother prices initially
     
     let price = drug.basePrice * (1 + priceFluctuation);
     
