@@ -192,7 +192,9 @@ export function useGameLogic() {
       addLogEntry('info', `Game started in ${INITIAL_PLAYER_STATS.currentLocation}. Market, shop, and events loaded.`);
     } catch (error) {
       console.error("Failed to fetch initial game data:", error);
-      toast({ title: "Error", description: "Could not load game data.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Error", description: "Could not load game data.", variant: "destructive" });
+      }, 0);
       addLogEntry('info', 'Error loading initial game data.');
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
@@ -210,23 +212,31 @@ export function useGameLogic() {
       const currentStats = prev.playerStats;
       const cost = quantity * price;
       if (quantity <= 0) { 
-        toast({ title: "Invalid Quantity", description: "Please enter a positive amount to buy.", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Invalid Quantity", description: "Please enter a positive amount to buy.", variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       if (currentStats.cash < cost) { 
-        toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       const currentTotalUnits = Object.values(currentStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
       if (currentTotalUnits + quantity > currentStats.maxInventoryCapacity) { 
-        toast({ title: "Not Enough Space", description: `You can only carry ${currentStats.maxInventoryCapacity - currentTotalUnits} more units.`, variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Space", description: `You can only carry ${currentStats.maxInventoryCapacity - currentTotalUnits} more units.`, variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       const newInventory = { ...currentStats.inventory };
       const currentItem: InventoryItem = newInventory[drugName] || { quantity: 0, totalCost: 0 };
       newInventory[drugName] = { quantity: currentItem.quantity + quantity, totalCost: currentItem.totalCost + cost };
       const successMsg = `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.`;
-      toast({ title: "Purchase Successful", description: successMsg }); 
+      setTimeout(() => {
+        toast({ title: "Purchase Successful", description: successMsg }); 
+      }, 0);
       addLogEntry('buy', successMsg);
       const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
       return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash - cost, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
@@ -238,11 +248,15 @@ export function useGameLogic() {
       const currentStats = prev.playerStats;
       const currentItem = currentStats.inventory[drugName];
       if (quantity <= 0) { 
-        toast({ title: "Invalid Quantity", description: "Please enter a positive amount.", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Invalid Quantity", description: "Please enter a positive amount.", variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       if (!currentItem || currentItem.quantity < quantity) { 
-        toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       
@@ -263,7 +277,9 @@ export function useGameLogic() {
         delete newInventory[drugName]; 
       }
       const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
-      toast({ title: "Sale Successful", description: successMsg }); 
+      setTimeout(() => {
+        toast({ title: "Sale Successful", description: successMsg }); 
+      }, 0);
       addLogEntry('sell', successMsg);
       const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
       return { ...prev, playerStats: { ...currentStats, cash: currentStats.cash + earnings, inventory: newInventory }, playerActivityInBoroughsThisDay: newPlayerActivity };
@@ -274,15 +290,21 @@ export function useGameLogic() {
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.cash < weaponToBuy.price) { 
-        toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       if (cs.equippedWeapon?.name === weaponToBuy.name) { 
-        toast({ title: "Already Equipped" }); 
+        setTimeout(() => {
+          toast({ title: "Already Equipped" }); 
+        }, 0);
         return prev; 
       }
       const msg = `Purchased ${weaponToBuy.name} for $${weaponToBuy.price.toLocaleString()}.`;
-      toast({ title: "Weapon Acquired!", description: msg }); 
+      setTimeout(() => {
+        toast({ title: "Weapon Acquired!", description: msg }); 
+      }, 0);
       addLogEntry('shop_weapon_purchase', msg);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - weaponToBuy.price, equippedWeapon: weaponToBuy } };
     });
@@ -293,11 +315,15 @@ export function useGameLogic() {
       const cs = prev.playerStats;
 
       if (cs.purchasedArmorIds.includes(armorToBuy.id)) {
-        toast({ title: "Already Owned", description: `You already own ${armorToBuy.name}.` });
+        setTimeout(() => {
+          toast({ title: "Already Owned", description: `You already own ${armorToBuy.name}.` });
+        }, 0);
         return prev;
       }
       if (cs.cash < armorToBuy.price) {
-        toast({ title: "Not Enough Cash", variant: "destructive" });
+        setTimeout(() => {
+          toast({ title: "Not Enough Cash", variant: "destructive" });
+        }, 0);
         return prev;
       }
 
@@ -319,7 +345,9 @@ export function useGameLogic() {
       newPlayerStats.equippedArmor = bestOwnedArmor;
 
       const msg = `Purchased ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection is now ${newPlayerStats.equippedArmor?.protectionBonus || PLAYER_BASE_DEFENSE}.`;
-      toast({ title: "Armor Acquired!", description: msg });
+      setTimeout(() => {
+        toast({ title: "Armor Acquired!", description: msg });
+      }, 0);
       addLogEntry('shop_armor_purchase', msg);
 
       return { ...prev, playerStats: newPlayerStats };
@@ -331,11 +359,15 @@ export function useGameLogic() {
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.cash < itemToBuy.price) { 
-        toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       if (cs.health >= MAX_PLAYER_HEALTH) { 
-        toast({ title: "Full Health", description: "You are already at maximum health." }); 
+        setTimeout(() => {
+          toast({ title: "Full Health", description: "You are already at maximum health." }); 
+        }, 0);
         return prev; 
       }
       
@@ -352,12 +384,16 @@ export function useGameLogic() {
       const healedAmount = newHealth - cs.health;
 
       if (healedAmount <= 0) { 
-        toast({ title: "No Effect", description: "This item provided no additional healing." }); 
+        setTimeout(() => {
+          toast({ title: "No Effect", description: "This item provided no additional healing." }); 
+        }, 0);
         return prev; 
       }
       
       const msg = `Used ${itemToBuy.name}. Healed ${healedAmount} HP.`;
-      toast({ title: "Healing Applied!", description: msg }); 
+      setTimeout(() => {
+        toast({ title: "Healing Applied!", description: msg }); 
+      }, 0);
       addLogEntry('shop_healing_purchase', msg); 
       addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - itemToBuy.price, health: newHealth } };
@@ -368,15 +404,21 @@ export function useGameLogic() {
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.purchasedUpgradeIds.includes(upgradeToBuy.id)) { 
-        toast({ title: "Already Owned" }); 
+        setTimeout(() => {
+          toast({ title: "Already Owned" }); 
+        }, 0);
         return prev; 
       }
       if (cs.cash < upgradeToBuy.price) { 
-        toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Not Enough Cash", variant: "destructive" }); 
+        }, 0);
         return prev; 
       }
       const msg = `Purchased ${upgradeToBuy.name}. Capacity +${upgradeToBuy.capacityIncrease}.`;
-      toast({ title: "Upgrade Acquired!", description: msg }); 
+      setTimeout(() => {
+        toast({ title: "Upgrade Acquired!", description: msg }); 
+      }, 0);
       addLogEntry('shop_capacity_upgrade', msg);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - upgradeToBuy.price, maxInventoryCapacity: cs.maxInventoryCapacity + upgradeToBuy.capacityIncrease, purchasedUpgradeIds: [...cs.purchasedUpgradeIds, upgradeToBuy.id] } };
     });
@@ -385,13 +427,17 @@ export function useGameLogic() {
   const travelToLocation = useCallback(async (targetLocation: string) => {
     const currentLoc = gameState.playerStats.currentLocation;
     if (currentLoc === targetLocation) { 
-      toast({ title: "Already There", description: `You are already in ${targetLocation}.` }); 
+      setTimeout(() => {
+        toast({ title: "Already There", description: `You are already in ${targetLocation}.` }); 
+      }, 0);
       return; 
     }
 
     const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
     addLogEntry('travel', travelMessage);
-    toast({ title: "Travel Successful", description: travelMessage });
+    setTimeout(() => {
+      toast({ title: "Travel Successful", description: travelMessage });
+    }, 0);
 
     const previousPricesInOldLocation = [...gameState.marketPrices];
 
@@ -414,14 +460,12 @@ export function useGameLogic() {
       finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]);
 
       const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
-        // When traveling to a new location, the "previous" prices are less relevant for direct up/down arrows for *that location*
-        // For now, mark all as 'new' or 'same' if price matches base. A more sophisticated approach might compare to a global average or borough base.
         const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
         let direction: DrugPrice['priceChangeDirection'] = 'new';
         if(baseDrug){
             if(currentDrug.price === baseDrug.basePrice) direction = 'same';
-            else if (currentDrug.price > baseDrug.basePrice) direction = 'up'; // Relative to base, could be refined
-            else direction = 'down'; // Relative to base
+            else if (currentDrug.price > baseDrug.basePrice) direction = 'up'; 
+            else direction = 'down'; 
         }
         return { ...currentDrug, priceChangeDirection: direction };
       });
@@ -435,7 +479,9 @@ export function useGameLogic() {
       addLogEntry('info', `Market data for ${targetLocation} updated.`);
     } catch (e) { 
       console.error("Market fetch error during travel:", e); 
-      toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" });
+      }, 0);
       setGameState(prev => ({...prev, isLoadingMarket: false}));
     }
   }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, applyEventPriceModifiers, gameState.marketPrices]); 
@@ -444,7 +490,9 @@ export function useGameLogic() {
     try { return await getLocalHeadlines(location); } 
     catch (e) { 
       console.error(e); 
-      toast({ title: "Headline Error", variant: "destructive" }); 
+      setTimeout(() => {
+        toast({ title: "Headline Error", variant: "destructive" }); 
+      }, 0);
       return []; 
     }
   }, [toast]);
@@ -457,7 +505,6 @@ export function useGameLogic() {
       let initialBattleLog: LogEntry[] = [{id: uuidv4(), timestamp: new Date().toISOString(), type: 'info', message: `Encountered ${enemy.name}!`}]
       let updatedPlayerStats = { ...prev.playerStats };
 
-      // Enemy Initiative Check
       if (Math.random() < ENEMY_INITIATIVE_CHANCE) {
         initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} attacks first!`});
         if (Math.random() < MISS_CHANCE) {
@@ -683,7 +730,9 @@ export function useGameLogic() {
 
     if (eventInCurrentLocation?.effects.playerImpact) {
       const impact = eventInCurrentLocation.effects.playerImpact; 
-      toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
+      setTimeout(() => {
+        toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
+      }, 0);
       addLogEntry('event_player_impact', `${eventInCurrentLocation.name}: ${impact.message}`);
       
       if (impact.healthChange) { 
@@ -711,7 +760,9 @@ export function useGameLogic() {
           playerActivityInBoroughsThisDay: {},
           battleMessage: `Overcome by event: ${eventInCurrentLocation.name}.` 
         }));
-        toast({ title: "Game Over", description: `Succumbed to event: ${eventInCurrentLocation.name}.`, variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Game Over", description: `Succumbed to event: ${eventInCurrentLocation.name}.`, variant: "destructive" }); 
+        }, 0);
         addLogEntry('game_over', `Player defeated by event: ${eventInCurrentLocation.name}.`);
         return;
       }
@@ -750,7 +801,9 @@ export function useGameLogic() {
 
     } catch (e) { 
         console.error("Error fetching market data on next day:", e); 
-        toast({ title: "Market Error", description:"Failed to update market data.", variant: "destructive" }); 
+        setTimeout(() => {
+          toast({ title: "Market Error", description:"Failed to update market data.", variant: "destructive" }); 
+        }, 0);
         addLogEntry('info', "Market update failed on next day."); 
     }
     
@@ -770,7 +823,9 @@ export function useGameLogic() {
 
     if (currentStats.health <= 0 && !gameState.isBattleActive) {
       setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, battleMessage: "Succumbed to injuries or events." }));
-      toast({ title: "Game Over", description: "You succumbed to your fate.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Game Over", description: "You succumbed to your fate.", variant: "destructive" });
+      }, 0);
       addLogEntry('game_over', 'Player health reached 0 outside of active battle.');
       return;
     }
@@ -784,7 +839,9 @@ export function useGameLogic() {
       else if (currentStats.cash > 2000 && !['Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Dealer';
       else if (currentStats.cash > 1000 && !['Peddler', 'Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Peddler';
       if (currentStats.rank !== oldRank) { 
-        toast({title: "Rank Up!", description: `Promoted to ${currentStats.rank}!`}); 
+        setTimeout(() => {
+          toast({title: "Rank Up!", description: `Promoted to ${currentStats.rank}!`}); 
+        }, 0);
         addLogEntry('rank_up', `Promoted to ${currentStats.rank}!`); 
       }
     }
@@ -835,3 +892,4 @@ export function useGameLogic() {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+
