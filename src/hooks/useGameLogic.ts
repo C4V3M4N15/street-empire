@@ -13,8 +13,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { User } from 'firebase/auth';
 
 export const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
-const PLAYER_BASE_ATTACK = 8;
-const PLAYER_BASE_DEFENSE = 2; 
+const PLAYER_BASE_ATTACK = 10; // Player's base attack
+const PLAYER_BASE_DEFENSE = 5; // Player's base defense
 const MAX_PLAYER_HEALTH = 100;
 
 const MISS_CHANCE = 0.15;
@@ -101,28 +101,7 @@ export function useGameLogic(user: User | null) {
 
   const { toast } = useToast();
   const isMounted = useRef(false);
-
-  useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
-
   
-  useEffect(() => {
-    if (user?.displayName && user.displayName !== gameState.playerStats.name) {
-      if (isMounted.current) {
-        setGameState(prev => ({
-          ...prev,
-          playerStats: {
-            ...prev.playerStats,
-            name: user.displayName!,
-          }
-        }));
-      }
-    }
-  }, [user, gameState.playerStats.name]);
-
-
   const addLogEntry = useCallback((type: LogEventType, message: string, isBattleLog = false) => {
     const entry = { id: uuidv4(), timestamp: new Date().toISOString(), type, message };
     if (isMounted.current) {
@@ -225,7 +204,7 @@ export function useGameLogic(user: User | null) {
         };
         });
     }
-  }, [addLogEntry, user, gameState.playerStats.daysPassed, gameState.playerStats.equippedArmor?.protectionBonus, toast]); // Added gameState.playerStats.equippedArmor?.protectionBonus
+  }, [addLogEntry, user, gameState.playerStats.daysPassed, gameState.playerStats.equippedArmor?.protectionBonus, toast]);
 
 
   const handleNextDay = useCallback(async () => {
@@ -501,11 +480,31 @@ export function useGameLogic(user: User | null) {
   }, [toast, addLogEntry, applyHeadlineImpacts, user, gameState.boroughHeatLevels, gameState.playerStats.daysPassed]); 
 
   useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+  
+  useEffect(() => {
     if (user && isMounted.current) { 
         fetchInitialData();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); 
+
+  // Ensure this effect runs after playerStats.name is potentially updated by user auth
+  useEffect(() => {
+    if (user?.displayName && user.displayName !== gameState.playerStats.name) {
+      if (isMounted.current) {
+        setGameState(prev => ({
+          ...prev,
+          playerStats: {
+            ...prev.playerStats,
+            name: user.displayName!,
+          }
+        }));
+      }
+    }
+  }, [user, gameState.playerStats.name]);
 
 
   const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
@@ -794,17 +793,19 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
             addLogEntry('info', travelLimitMsg);
             setTimeout(() => toast({ title: "Travel Limit Reached", description: "Advancing to the next day." }), 0);
             
+            // Call handleNextDay asynchronously to avoid direct state update during another state update
             Promise.resolve().then(() => handleNextDay());
-            return { ...prev, isLoadingNextDay: true };
+            return { ...prev, isLoadingNextDay: true }; // Set loading state for Next Day
         }
         
-        if (Math.random() < 0.1) { 
+        // Simulate travel failure
+        if (Math.random() < 0.1) { // 10% chance of travel failure
             const failureMsg = `Attempt to travel to ${targetLocation} failed! The streets are treacherous.`;
             addLogEntry('travel', failureMsg);
             setTimeout(() => toast({ title: "Travel Failed", description: failureMsg, variant: "destructive" }), 0);
             return {
                  ...prev, 
-                 playerStats: { ...prev.playerStats, travelsThisDay: prev.playerStats.travelsThisDay + 1 }
+                 playerStats: { ...prev.playerStats, travelsThisDay: prev.playerStats.travelsThisDay + 1 } // Increment travel count even on failure
             };
         }
 
@@ -813,8 +814,10 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
         addLogEntry('travel', travelMessage);
         setTimeout(() => toast({ title: "Travel Successful", description: travelMessage }), 0);
 
+        // Preserve market prices from the old location for comparison
         const previousPricesInOldLocation = [...prev.marketPrices];
 
+        // Prepare state for travel, setting loading flags
         const newStateAfterTravelSetup = {
             ...prev,
             playerStats: {
@@ -822,14 +825,15 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
                 currentLocation: targetLocation,
                 travelsThisDay: prev.playerStats.travelsThisDay + 1,
             },
-            isLoadingMarket: true,
-            localHeadlines: [],
-            marketPrices: [], 
-            previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest),
+            isLoadingMarket: true, // Market will be loading for the new location
+            localHeadlines: [], // Clear old headlines
+            marketPrices: [], // Clear old market prices
+            previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest), // Store prices from OLD location for comparison logic
         };
         
+        // Fetch new market data asynchronously
         (async () => {
-            if (!isMounted.current) return;
+            if (!isMounted.current) return; // Check if component is still mounted
             try {
                 const newRawPrices = await getMarketPrices(targetLocation, newStateAfterTravelSetup.playerStats.daysPassed, newStateAfterTravelSetup.boroughHeatLevels);
                 const newHeadlines = await getLocalHeadlines(targetLocation);
@@ -838,37 +842,39 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
                 let finalPricesWithImpacts = applyHeadlineImpacts(newRawPrices, newHeadlines);
                 finalPricesWithImpacts = applyEventPriceModifiers(finalPricesWithImpacts, currentActiveEvents[targetLocation]);
 
+                // Determine price change direction based on base prices for the new location
                 const newMarketPricesWithDirection = finalPricesWithImpacts.map(currentDrug => {
-                    const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug);
-                    let direction: DrugPrice['priceChangeDirection'] = 'new';
+                    const baseDrug = ALL_DRUGS.find(d => d.name === currentDrug.drug); // Find base info
+                    let direction: DrugPrice['priceChangeDirection'] = 'new'; // Default if no base price
                     if(baseDrug){
                         if(currentDrug.price === baseDrug.basePrice) direction = 'same';
-                        else if (currentDrug.price > baseDrug.basePrice) direction = 'up';
-                        else direction = 'down';
+                        else if (currentDrug.price > baseDrug.basePrice) direction = 'up'; // Higher than average
+                        else direction = 'down'; // Lower than average
                     }
                     return { ...currentDrug, priceChangeDirection: direction };
                 });
 
-                if (isMounted.current) {
+                if (isMounted.current) { // Check mount status again before setting state
                     setGameState(s => ({
                         ...s,
                         marketPrices: newMarketPricesWithDirection,
                         localHeadlines: newHeadlines,
-                        isLoadingMarket: false
+                        isLoadingMarket: false // Market data loaded
                     }));
                 }
                 addLogEntry('info', `Market data for ${targetLocation} updated.`);
             } catch (e) {
                 console.error("Market fetch error during travel:", e);
-                if (isMounted.current) {
+                if (isMounted.current) { // Check mount status
                     setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
-                    setGameState(s => ({...s, isLoadingMarket: false})); 
+                    setGameState(s => ({...s, isLoadingMarket: false})); // Stop loading on error
                 }
             }
         })();
 
         return newStateAfterTravelSetup;
     });
+  // Dependencies for travelToLocation, including handleNextDay
   }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); 
 
 
@@ -916,6 +922,7 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
                 addBattleLog(`You try to attack ${newEnemyStats.name}, but miss!`);
             } else {
                 let playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
+                playerDamage = Math.max(10, playerDamage); // Ensure player damage is at least 10
                 const isCrit = Math.random() < CRITICAL_HIT_CHANCE;
                 if (isCrit) {
                 playerDamage = Math.round(playerDamage * CRITICAL_HIT_MULTIPLIER);

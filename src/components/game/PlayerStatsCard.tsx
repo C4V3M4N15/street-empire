@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { PlayerStats } from '@/types/game';
@@ -16,8 +17,8 @@ interface PlayerStatsCardProps {
   playerStats: PlayerStats;
 }
 
-const PLAYER_BASE_ATTACK = 5; 
-const PLAYER_BASE_PROTECTION = 2; 
+const PLAYER_BASE_ATTACK = 10; 
+const PLAYER_BASE_PROTECTION = 5; 
 
 const StatItem: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string; className?: string }> = ({ icon: Icon, label, value, iconColor, className }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-border/50 last:border-b-0", className)}>
@@ -146,3 +147,4 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     </Card>
   );
 }
+

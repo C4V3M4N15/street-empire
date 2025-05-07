@@ -1,3 +1,4 @@
+
 import type { PlayerStats, EnemyStats } from '@/types/game';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -11,8 +12,8 @@ export interface BattleResult {
   narration: string; // A summary of what happened post-battle
 }
 
-// const PLAYER_BASE_ATTACK = 8; // Player's base attack defined in useGameLogic.ts
-// const PLAYER_BASE_DEFENSE = 2; // Player's base defense defined in useGameLogic.ts
+// const PLAYER_BASE_ATTACK = 10; // Player's base attack defined in useGameLogic.ts
+// const PLAYER_BASE_DEFENSE = 5; // Player's base defense defined in useGameLogic.ts
 
 /**
  * Generates stats for an enemy based on type and potentially player progression.
@@ -28,10 +29,10 @@ export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', pl
   switch (opponentType) {
     case 'police':
       enemy = {
-        name: 'Beat Cop',
-        maxHealth: Math.round((35 + Math.random() * 10) * difficultyScale),
-        attack: Math.round((10 + Math.random() * 4) * difficultyScale),
-        defense: Math.round((12 + Math.random() * 5) * difficultyScale),
+        name: 'Beat Cop', // A "beat cop" is a uniformed police officer who patrols a specific area or "beat".
+        maxHealth: Math.round((25 + Math.random() * 8) * difficultyScale), // Lowered from 35+
+        attack: Math.round((8 + Math.random() * 3) * difficultyScale),    // Lowered from 10+
+        defense: Math.round((10 + Math.random() * 4) * difficultyScale),  // Slightly lowered from 12+
         defeatCashReward: 0, 
         defeatRepReward: -10 - Math.floor(Math.random() * 5), 
         bribable: true,
@@ -56,9 +57,9 @@ export function generateEnemyStats(opponentType: 'police' | 'gang' | 'fiend', pl
     default:
       enemy = {
         name: 'Desperate Fiend',
-        maxHealth: Math.round((20 + Math.random() * 8) * difficultyScale), // Reduced health from 25+
+        maxHealth: Math.round((20 + Math.random() * 8) * difficultyScale), 
         attack: Math.round((6 + Math.random() * 4) * difficultyScale), 
-        defense: Math.round((2 + Math.random() * 2) * difficultyScale), // Reduced defense from 4+
+        defense: Math.round((2 + Math.random() * 2) * difficultyScale), 
         defeatCashReward: 20 + Math.floor(Math.random() * 30),
         defeatRepReward: 2 + Math.floor(Math.random() * 4),
         bribable: true,
@@ -107,3 +108,4 @@ export function getBattleResultConsequences(playerWon: boolean, enemyDefeated: E
     };
   }
 }
+
