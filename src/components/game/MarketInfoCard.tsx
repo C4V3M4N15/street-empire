@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -103,7 +104,7 @@ export function MarketInfoCard({
       <div className="mb-4">
         <Skeleton className="h-5 w-1/2 mb-2" />
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center justify-between py-2.5 border-b border-border/30">
+          <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
             <div className="w-1/3">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2 mt-1" />
@@ -181,8 +182,8 @@ export function MarketInfoCard({
 
                       return (
                         <React.Fragment key={drug.drug}>
-                        <div className="py-2.5">
-                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-1.5">
+                        <div className="py-1.5"> {/* Reduced py-2.5 to py-1.5 */}
+                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-1"> {/* Reduced mb-1.5 to mb-1 */}
                             <div className="col-span-1 sm:col-span-1">
                               <p className={cn("text-sm font-medium truncate", priceChangeColor)} title={drug.drug}>
                                 {getPriceChangeIcon(drug.priceChangeDirection)}
