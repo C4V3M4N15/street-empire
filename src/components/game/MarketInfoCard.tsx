@@ -166,7 +166,7 @@ export function MarketInfoCard({
                 </h3>
 
                 {marketPrices.length > 0 ? (
-                  <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+                  <div className="space-y-1 pr-1"> {/* Removed max-h-80 and overflow-y-auto */}
                     {marketPrices.map((drug, index) => {
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
