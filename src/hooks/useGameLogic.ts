@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { User } from 'firebase/auth';
 
 export const NYC_LOCATIONS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
-const PLAYER_BASE_ATTACK = 8; // Increased from 5 to 8
+const PLAYER_BASE_ATTACK = 8;
 const PLAYER_BASE_DEFENSE = 2; 
 const MAX_PLAYER_HEALTH = 100;
 
@@ -162,6 +163,70 @@ export function useGameLogic(user: User | null) {
       return { ...drugPrice, price: Math.max(1, Math.round(newPrice)) };
     });
   }, []);
+
+  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
+    if (!user || gameState.playerStats.daysPassed <= 10) { 
+      if (gameState.playerStats.daysPassed <= 10 && isMounted.current) {
+        addLogEntry('info', `An encounter with ${opponentType} was avoided due to being early in the game.`);
+        setTimeout(() => toast({title: "Close Call!", description: `You managed to avoid a confrontation with a ${opponentType}. Still new to these streets...`, duration: 4000}),0);
+      }
+      return;
+    }
+
+    if (isMounted.current) {
+        setGameState(prev => {
+        if (prev.isBattleActive) return prev; 
+
+        const enemy = generateEnemyStats(opponentType, prev.playerStats);
+        let initialBattleLog: LogEntry[] = [{id: uuidv4(), timestamp: new Date().toISOString(), type: 'info', message: `Encountered ${enemy.name}!`}]
+        let updatedPlayerStats = { ...prev.playerStats };
+        const playerEffectiveDefense = PLAYER_BASE_DEFENSE + (updatedPlayerStats.equippedArmor?.protectionBonus || 0);
+
+
+        if (Math.random() < ENEMY_INITIATIVE_CHANCE) {
+            initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} attacks first!`});
+            if (Math.random() < MISS_CHANCE) { 
+                initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} tries to attack you, but misses!`});
+            } else {
+                const enemyAttackPower = enemy.attack;
+                let enemyDamage = Math.max(1, enemyAttackPower - playerEffectiveDefense);
+                const isEnemyCrit = Math.random() < CRITICAL_HIT_CHANCE; 
+                if (isEnemyCrit) {
+                    enemyDamage = Math.round(enemyDamage * CRITICAL_HIT_MULTIPLIER);
+                    initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `CRITICAL HIT! ${enemy.name} strikes you for ${enemyDamage} damage!`});
+                } else {
+                    initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} hits you for ${enemyDamage} damage.`});
+                }
+                updatedPlayerStats.health = Math.max(0, updatedPlayerStats.health - enemyDamage);
+                addLogEntry('health_update', `Health -${enemyDamage} to ${updatedPlayerStats.health} from ${enemy.name}'s initiative attack.`, true); 
+            }
+        }
+
+        addLogEntry('info', `Battle started against ${enemy.name}! Player health: ${updatedPlayerStats.health}`, true); 
+        if (updatedPlayerStats.health <=0 && !prev.isGameOver) { 
+            return {
+            ...prev,
+            playerStats: updatedPlayerStats,
+            isBattleActive: true, 
+            currentEnemy: enemy,
+            battleLog: initialBattleLog,
+            battleMessage: `You were defeated by ${enemy.name} before you could react!`,
+            isGameOver: true 
+            };
+        }
+
+        return {
+            ...prev,
+            playerStats: updatedPlayerStats,
+            isBattleActive: true,
+            currentEnemy: enemy,
+            battleLog: initialBattleLog,
+            battleMessage: null, 
+        };
+        });
+    }
+  }, [addLogEntry, user, gameState.playerStats.daysPassed, gameState.playerStats.equippedArmor?.protectionBonus, toast]); // Added gameState.playerStats.equippedArmor?.protectionBonus
+
 
   const handleNextDay = useCallback(async () => {
     if (!user) return;
@@ -729,18 +794,14 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
             addLogEntry('info', travelLimitMsg);
             setTimeout(() => toast({ title: "Travel Limit Reached", description: "Advancing to the next day." }), 0);
             
-            // Set loading for next day and schedule handleNextDay.
-            // handleNextDay itself will clear isLoadingNextDay.
             Promise.resolve().then(() => handleNextDay());
             return { ...prev, isLoadingNextDay: true };
         }
         
-        // Travel event failure check
-        if (Math.random() < 0.1) { // 10% chance of travel failure
+        if (Math.random() < 0.1) { 
             const failureMsg = `Attempt to travel to ${targetLocation} failed! The streets are treacherous.`;
             addLogEntry('travel', failureMsg);
             setTimeout(() => toast({ title: "Travel Failed", description: failureMsg, variant: "destructive" }), 0);
-            // Consume a travel attempt
             return {
                  ...prev, 
                  playerStats: { ...prev.playerStats, travelsThisDay: prev.playerStats.travelsThisDay + 1 }
@@ -754,7 +815,6 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
 
         const previousPricesInOldLocation = [...prev.marketPrices];
 
-        // Setup state for travel, fetch new data in a separate async function
         const newStateAfterTravelSetup = {
             ...prev,
             playerStats: {
@@ -764,11 +824,10 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
             },
             isLoadingMarket: true,
             localHeadlines: [],
-            marketPrices: [], // Clear old prices immediately
+            marketPrices: [], 
             previousMarketPrices: previousPricesInOldLocation.map(({ priceChangeDirection, ...rest }) => rest),
         };
         
-        // Fetch new market data
         (async () => {
             if (!isMounted.current) return;
             try {
@@ -803,78 +862,15 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
                 console.error("Market fetch error during travel:", e);
                 if (isMounted.current) {
                     setTimeout(() => toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" }), 0);
-                    setGameState(s => ({...s, isLoadingMarket: false})); // Ensure loading is always turned off
+                    setGameState(s => ({...s, isLoadingMarket: false})); 
                 }
             }
         })();
 
         return newStateAfterTravelSetup;
     });
-  }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); // handleNextDay added
+  }, [user, toast, addLogEntry, applyHeadlineImpacts, handleNextDay]); 
 
-
-  const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
-    if (!user || gameState.playerStats.daysPassed <= 10) { 
-      if (gameState.playerStats.daysPassed <= 10 && isMounted.current) {
-        addLogEntry('info', `An encounter with ${opponentType} was avoided due to being early in the game.`);
-        setTimeout(() => toast({title: "Close Call!", description: `You managed to avoid a confrontation with a ${opponentType}. Still new to these streets...`, duration: 4000}),0);
-      }
-      return;
-    }
-
-    if (isMounted.current) {
-        setGameState(prev => {
-        if (prev.isBattleActive) return prev; 
-
-        const enemy = generateEnemyStats(opponentType, prev.playerStats);
-        let initialBattleLog: LogEntry[] = [{id: uuidv4(), timestamp: new Date().toISOString(), type: 'info', message: `Encountered ${enemy.name}!`}]
-        let updatedPlayerStats = { ...prev.playerStats };
-        const playerEffectiveDefense = PLAYER_BASE_DEFENSE + (updatedPlayerStats.equippedArmor?.protectionBonus || 0);
-
-
-        if (Math.random() < ENEMY_INITIATIVE_CHANCE) {
-            initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} attacks first!`});
-            if (Math.random() < MISS_CHANCE) { 
-                initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} tries to attack you, but misses!`});
-            } else {
-                const enemyAttackPower = enemy.attack;
-                let enemyDamage = Math.max(1, enemyAttackPower - playerEffectiveDefense);
-                const isEnemyCrit = Math.random() < CRITICAL_HIT_CHANCE; 
-                if (isEnemyCrit) {
-                    enemyDamage = Math.round(enemyDamage * CRITICAL_HIT_MULTIPLIER);
-                    initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `CRITICAL HIT! ${enemy.name} strikes you for ${enemyDamage} damage!`});
-                } else {
-                    initialBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${enemy.name} hits you for ${enemyDamage} damage.`});
-                }
-                updatedPlayerStats.health = Math.max(0, updatedPlayerStats.health - enemyDamage);
-                addLogEntry('health_update', `Health -${enemyDamage} to ${updatedPlayerStats.health} from ${enemy.name}'s initiative attack.`, true); 
-            }
-        }
-
-        addLogEntry('info', `Battle started against ${enemy.name}! Player health: ${updatedPlayerStats.health}`, true); 
-        if (updatedPlayerStats.health <=0 && !prev.isGameOver) { 
-            return {
-            ...prev,
-            playerStats: updatedPlayerStats,
-            isBattleActive: true, 
-            currentEnemy: enemy,
-            battleLog: initialBattleLog,
-            battleMessage: `You were defeated by ${enemy.name} before you could react!`,
-            isGameOver: true 
-            };
-        }
-
-        return {
-            ...prev,
-            playerStats: updatedPlayerStats,
-            isBattleActive: true,
-            currentEnemy: enemy,
-            battleLog: initialBattleLog,
-            battleMessage: null, 
-        };
-        });
-    }
-  }, [addLogEntry, user, gameState.playerStats.daysPassed, toast]); 
 
   const handlePlayerBattleAction = useCallback((action: PlayerBattleActionType) => {
     if (!user || !isMounted.current) return;
@@ -1074,3 +1070,4 @@ const travelToLocation = useCallback(async (targetLocation: string) => {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+
