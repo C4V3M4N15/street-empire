@@ -42,7 +42,7 @@ A player encounters an opponent. Based on the player's status and the opponent t
 
 Player Status:
 - Health: {{playerHealth}}
-- Cash: ${{playerCash}}
+- Cash: $ {{playerCash}}
 - Reputation: {{playerReputation}}
 - Carrying: {{#if playerInventoryItems}}{{#each playerInventoryItems}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}nothing significant{{/if}}
 
@@ -96,3 +96,4 @@ const combatFlow = ai.defineFlow(
     return output;
   }
 );
+
