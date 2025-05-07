@@ -19,7 +19,18 @@ export async function simulateCombat(opponentType: 'police' | 'gang' | 'fiend', 
     // For simplicity, consider drugs with base price > 1000 as "valuable" for the prompt
     // This is a heuristic; a more sophisticated system might be needed
     .filter(([drugName]) => {
-        const basePrices: Record<string, number> = {'Cocaine': 25000, 'Heroin': 15000, 'MDMA': 1500, 'Meth': 8000, 'Opium': 10000, 'Fentanyl': 50000, 'Crack': 1000};
+        // Updated basePrices to reflect changes in market.ts
+        const basePrices: Record<string, number> = {
+            'Cocaine': 18000, // Was 25000
+            'Heroin': 12000, // Was 15000
+            'MDMA': 1500,
+            'Meth': 6000, // Was 8000
+            'Opium': 7000, // Was 10000
+            'Fentanyl': 20000, // Was 50000
+            'Crack': 1000,
+            // Other drugs from ALL_DRUGS in market.ts can be added here if their base price > 1000
+            // Or rely on the || 0 to filter them out if not explicitly listed.
+        };
         return (basePrices[drugName] || 0) > 1000;
     })
     .map(([drugName]) => drugName);
