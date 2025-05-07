@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -7,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical } from 'lucide-react'; // Added PackagePlus, BriefcaseMedical
-import type { PlayerStats } from '@/types/game';
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone } from 'lucide-react'; // Added Megaphone
+import type { PlayerStats, GameState } from '@/types/game'; // Import GameState for activeBoroughEvents
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,14 +18,15 @@ interface MarketInfoCardProps {
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
+  activeBoroughEvents: GameState['activeBoroughEvents']; // Add activeBoroughEvents prop
   availableWeapons: Weapon[];
   availableArmor: Armor[];
-  availableHealingItems: HealingItem[]; // Add availableHealingItems prop
+  availableHealingItems: HealingItem[]; 
   buyDrug: (drugName: string, quantity: number, price: number) => void;
   sellDrug: (drugName: string, quantity: number, price: number) => void;
   buyWeapon: (weapon: Weapon) => void;
   buyArmor: (armor: Armor) => void;
-  buyHealingItem: (item: HealingItem) => void; // Add buyHealingItem prop
+  buyHealingItem: (item: HealingItem) => void; 
   travelToLocation: (location: string) => void;
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
@@ -47,13 +47,14 @@ const HeadlineItem: React.FC<{ headline: string; impact: number }> = ({ headline
   );
 };
 
-const MAX_PLAYER_HEALTH = 100; // Assuming max health is 100, consistent with useGameLogic
+const MAX_PLAYER_HEALTH = 100; 
 
 export function MarketInfoCard({
   marketPrices,
   localHeadlines,
   isLoading,
   playerStats,
+  activeBoroughEvents, // Destructure prop
   availableWeapons,
   availableArmor,
   availableHealingItems,
@@ -66,6 +67,7 @@ export function MarketInfoCard({
   fetchHeadlinesForLocation
 }: MarketInfoCardProps) {
   const [transactionQuantities, setTransactionQuantities] = React.useState<{ [drugName: string]: string }>({});
+  const currentEventInLocation = activeBoroughEvents[playerStats.currentLocation];
 
   const handleQuantityChange = (drugName: string, value: string) => {
     const numValue = parseInt(value, 10);
@@ -145,6 +147,12 @@ export function MarketInfoCard({
                 <h3 className="text-md font-semibold mb-2 flex items-center">
                   <DollarSign className="mr-2 h-4 w-4 text-accent" /> Drug Prices & Inventory ({playerStats.currentLocation})
                 </h3>
+                {currentEventInLocation && (
+                    <div className="mb-2 p-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 text-yellow-300 text-xs flex items-center">
+                        <Megaphone className="h-4 w-4 mr-2 shrink-0" />
+                        <span><strong>Active Event:</strong> {currentEventInLocation.name} - <em>{currentEventInLocation.description}</em></span>
+                    </div>
+                )}
                 {marketPrices.length > 0 ? (
                   <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
                     {marketPrices.map((drug, index) => {

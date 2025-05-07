@@ -1,5 +1,5 @@
-
 import type { DrugPrice, LocalHeadline } from '@/services/market';
+import type { GameEvent } from '@/types/events';
 
 export type PlayerRank =
   | 'Rookie'
@@ -62,7 +62,9 @@ export type LogEventType =
   | 'game_over'
   | 'shop_weapon_purchase'
   | 'shop_armor_purchase'
-  | 'shop_healing_purchase' // New event type for buying healing items
+  | 'shop_healing_purchase'
+  | 'event_trigger' // For borough-wide events affecting the environment
+  | 'event_player_impact' // For events directly impacting the player
   | 'info'; // General information
 
 export interface LogEntry {
@@ -81,8 +83,10 @@ export interface GameState {
   isLoadingMarket: boolean;
   isGameOver: boolean;
   gameMessage: string | null;
-  availableWeapons: Weapon[]; // Weapons available in the shop
-  availableArmor: Armor[]; // Armor available in the shop
-  availableHealingItems: HealingItem[]; // Healing items available in the shop
+  availableWeapons: Weapon[];
+  availableArmor: Armor[];
+  availableHealingItems: HealingItem[];
+  activeBoroughEvents: Record<string, GameEvent | null>; // Borough name -> active event or null
+  boroughHeatLevels: Record<string, number>; // Borough name -> heat level
 }
 
