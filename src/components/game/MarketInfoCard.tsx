@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -103,7 +102,7 @@ export function MarketInfoCard({
     <>
       <div className="mb-4">
         <Skeleton className="h-5 w-1/2 mb-2" />
-        {[...Array(3)].map((_, i) => (
+        {[...Array(8)].map((_, i) => ( // Updated to 8 for all drugs
           <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
             <div className="w-1/3">
               <Skeleton className="h-4 w-3/4" />
@@ -150,7 +149,7 @@ export function MarketInfoCard({
             </TabsList>
         </CardHeader>
         <TabsContent value="market">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="p-4 pt-3 min-h-[calc(100vh-28rem)]"> {/* Applied min-height */}
             {(isLoading && marketPrices.length === 0) ? (
               renderSkeletons()
             ) : (
@@ -166,7 +165,7 @@ export function MarketInfoCard({
                 </h3>
 
                 {marketPrices.length > 0 ? (
-                  <div className="pr-1"> {/* REMOVED space-y-1 */}
+                  <div className="pr-1">
                     {marketPrices.map((drug, index) => {
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
@@ -182,14 +181,13 @@ export function MarketInfoCard({
 
                       return (
                         <React.Fragment key={drug.drug}>
-                        <div className="py-1"> {/* CHANGED from py-1.5 */}
-                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> {/* CHANGED from mb-1 */}
+                        <div className="py-1"> 
+                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> 
                             <div className="col-span-1 sm:col-span-1">
                               <p className={cn("text-sm font-medium truncate", priceChangeColor)} title={drug.drug}>
                                 {getPriceChangeIcon(drug.priceChangeDirection)}
                                 {drug.drug}
                               </p>
-                               {/* Combine Have and Volatility */}
                               <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
                                 <span>Have: {playerHoldings.toLocaleString()}</span>
                                 <span className="flex items-center">
@@ -234,7 +232,6 @@ export function MarketInfoCard({
                               </Button>
                             </div>
                           </div>
-                          {/* Cost message logic - only render if useful, no placeholder div */}
                           {(currentQuantityInput > 0 && ( (canBuy && (costForBuy > 0 || !canFit)) || (canSell && currentQuantityInput > 0) ) ) && (
                             <div className="text-xs text-muted-foreground h-auto mt-0.5">
                               {costForBuy > 0 && canBuy && !canFit && <p className="text-destructive">Not enough space</p>}
@@ -243,7 +240,7 @@ export function MarketInfoCard({
                             </div>
                           )}
                         </div>
-                        {index < marketPrices.length -1 && <Separator className="bg-border/50 my-0.5"/>} {/* CHANGED to my-0.5 */}
+                        {index < marketPrices.length -1 && <Separator className="bg-border/50 my-0.5"/>} 
                         </React.Fragment>
                       );
                     })}
@@ -468,4 +465,3 @@ export function MarketInfoCard({
     </Card>
   );
 }
-
