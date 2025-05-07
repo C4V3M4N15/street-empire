@@ -166,7 +166,7 @@ export function MarketInfoCard({
                 </h3>
 
                 {marketPrices.length > 0 ? (
-                  <div className="space-y-1 pr-1"> {/* Removed max-h-80 and overflow-y-auto */}
+                  <div className="pr-1"> {/* REMOVED space-y-1 */}
                     {marketPrices.map((drug, index) => {
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
@@ -182,18 +182,21 @@ export function MarketInfoCard({
 
                       return (
                         <React.Fragment key={drug.drug}>
-                        <div className="py-1.5"> {/* Reduced py-2.5 to py-1.5 */}
-                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-1"> {/* Reduced mb-1.5 to mb-1 */}
+                        <div className="py-1"> {/* CHANGED from py-1.5 */}
+                          <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> {/* CHANGED from mb-1 */}
                             <div className="col-span-1 sm:col-span-1">
                               <p className={cn("text-sm font-medium truncate", priceChangeColor)} title={drug.drug}>
                                 {getPriceChangeIcon(drug.priceChangeDirection)}
                                 {drug.drug}
                               </p>
-                              <p className="text-xs text-muted-foreground">Have: {playerHoldings.toLocaleString()}</p>
-                               <p className="text-xs text-muted-foreground flex items-center">
-                                <Percent className="h-3 w-3 mr-0.5 text-blue-400" />
-                                Volatility: {typeof drug.volatility === 'number' ? `${(drug.volatility * 100).toFixed(0)}%` : 'N/A'}
-                              </p>
+                               {/* Combine Have and Volatility */}
+                              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
+                                <span>Have: {playerHoldings.toLocaleString()}</span>
+                                <span className="flex items-center">
+                                  <Percent className="h-3 w-3 mr-0.5 text-blue-400" />
+                                  Volatility: {typeof drug.volatility === 'number' ? `${(drug.volatility * 100).toFixed(0)}%` : 'N/A'}
+                                </span>
+                              </div>
                             </div>
                             <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p>
                             <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
@@ -231,16 +234,16 @@ export function MarketInfoCard({
                               </Button>
                             </div>
                           </div>
-                          {currentQuantityInput > 0 && (
-                            <div className="text-xs text-muted-foreground h-3.5">
+                          {/* Cost message logic - only render if useful, no placeholder div */}
+                          {(currentQuantityInput > 0 && ( (canBuy && (costForBuy > 0 || !canFit)) || (canSell && currentQuantityInput > 0) ) ) && (
+                            <div className="text-xs text-muted-foreground h-auto mt-0.5">
                               {costForBuy > 0 && canBuy && !canFit && <p className="text-destructive">Not enough space</p>}
                               {costForBuy > 0 && canBuy && canFit && <p>Cost: ${costForBuy.toLocaleString()}</p>}
                               {costForBuy > 0 && !canBuy && playerStats.cash < costForBuy && <p className="text-destructive">Need: ${costForBuy.toLocaleString()}</p>}
                             </div>
                           )}
-                          {currentQuantityInput === 0 && <div className="h-3.5"></div>}
                         </div>
-                        {index < marketPrices.length -1 && <Separator className="bg-border/50"/>}
+                        {index < marketPrices.length -1 && <Separator className="bg-border/50 my-0.5"/>} {/* CHANGED to my-0.5 */}
                         </React.Fragment>
                       );
                     })}

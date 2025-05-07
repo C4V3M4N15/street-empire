@@ -58,7 +58,7 @@ export function UnifiedLogPanel({ eventLog }: UnifiedLogPanelProps) {
       return <p className="text-sm text-muted-foreground py-3 text-center">No {categoryName.toLowerCase()} logged yet.</p>;
     }
     return (
-      <ScrollArea className="h-40 pr-3"> {/* Adjusted height */}
+      <ScrollArea className="h-[calc(100vh-25rem)] pr-3"> {/* Adjusted height */}
         <div className="space-y-2">
           {logs.map((entry) => (
             <LogItemDisplay key={entry.id} entry={entry} />

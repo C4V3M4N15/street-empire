@@ -77,7 +77,7 @@ export function ReferencePanel() {
         </TabsList>
       </CardHeader>
       <TabsContent value="drugs" className="mt-0">
-        <ScrollArea className="h-[calc(24rem+40px)] sm:h-[calc(27rem+40px)] pr-3"> 
+        <ScrollArea className="h-[calc(100vh-28rem)] sm:h-[calc(100vh-28rem)] pr-3"> 
           {drugData.map((drug, index) => (
             <React.Fragment key={drug.name}>
               <Card className="mb-2 bg-card/30 p-3">
@@ -93,7 +93,7 @@ export function ReferencePanel() {
         </ScrollArea>
       </TabsContent>
       <TabsContent value="boroughs" className="mt-0">
-        <ScrollArea className="h-[calc(24rem+40px)] sm:h-[calc(27rem+40px)] pr-3"> 
+        <ScrollArea className="h-[calc(100vh-28rem)] sm:h-[calc(100vh-28rem)] pr-3"> 
            {boroughData.map((borough, index) => (
             <React.Fragment key={borough.name}>
             <Card className="mb-2 bg-card/30 p-3">
