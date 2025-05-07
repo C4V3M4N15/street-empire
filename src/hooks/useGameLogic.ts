@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -112,7 +113,7 @@ export function useGameLogic() {
         } else if (headline.affectedCategories && headline.affectedCategories.length > 0) {
           for (const catKey of headline.affectedCategories) {
             const drugsInCat = drugCategories[catKey as keyof typeof drugCategories];
-            if (categoryDrugs?.includes(drugPrice.drug)) {
+            if (drugsInCat?.includes(drugPrice.drug)) { // Changed categoryDrugs to drugsInCat
               applyThisHeadline = true;
               break;
             }
@@ -989,4 +990,5 @@ export function useGameLogic() {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+
 
