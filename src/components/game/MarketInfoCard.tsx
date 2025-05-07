@@ -111,7 +111,7 @@ export function MarketInfoCard({
                     <Map className="mr-2 h-4 w-4" /> Travel
                 </TabsTrigger>
                 <TabsTrigger value="shop" className="flex items-center">
-                    <Store className="mr-2 h-4 w-4" /> Shop
+                    <Store className="mr-2 h-4 w-4" /> The Git'n Place
                 </TabsTrigger>
             </TabsList>
         </CardHeader>
@@ -233,7 +233,7 @@ export function MarketInfoCard({
          <TabsContent value="shop">
           <CardContent className="p-4 pt-3">
             <h3 className="text-md font-semibold mb-2 flex items-center">
-              <Store className="mr-2 h-4 w-4 text-accent" /> General Store ({playerStats.currentLocation})
+              <Store className="mr-2 h-4 w-4 text-accent" /> The Git'n Place ({playerStats.currentLocation})
             </h3>
             <div className="min-h-[200px] flex items-center justify-center border-2 border-dashed border-border rounded-md">
               <p className="text-sm text-muted-foreground">
@@ -246,3 +246,4 @@ export function MarketInfoCard({
     </Card>
   );
 }
+
