@@ -46,14 +46,14 @@ export interface LocalHeadline {
 }
 
 export const ALL_DRUGS = [
-  { name: 'Weed', basePrice: 20, volatility: 0.15 },
-  { name: 'Mushrooms', basePrice: 15, volatility: 0.16 },
-  { name: 'LSD', basePrice: 25, volatility: 0.2 },
-  { name: 'Meth', basePrice: 80, volatility: 0.28 }, // Was "Speed"
-  { name: 'Crack', basePrice: 60, volatility: 0.35 },
-  { name: 'Heroin', basePrice: 120, volatility: 0.22 }, // Was "Boi"
-  { name: 'OxyContin', basePrice: 60, volatility: 0.22 }, // Was "Blues"
-  { name: 'Dilaudid', basePrice: 200, volatility: 0.25 },
+  { name: 'Weed', basePrice: 20, volatility: 0.195 }, // 0.15 * 1.3
+  { name: 'Mushrooms', basePrice: 15, volatility: 0.208 }, // 0.16 * 1.3
+  { name: 'LSD', basePrice: 25, volatility: 0.26 }, // 0.2 * 1.3
+  { name: 'Meth', basePrice: 80, volatility: 0.364 }, // 0.28 * 1.3 // Was "Speed"
+  { name: 'Crack', basePrice: 60, volatility: 0.455 }, // 0.35 * 1.3
+  { name: 'Heroin', basePrice: 120, volatility: 0.286 }, // 0.22 * 1.3 // Was "Boi"
+  { name: 'OxyContin', basePrice: 60, volatility: 0.286 }, // 0.22 * 1.3 // Was "Blues"
+  { name: 'Dilaudid', basePrice: 200, volatility: 0.325 }, // 0.25 * 1.3
 ];
 
 const ALL_HEADLINES: Array<{
