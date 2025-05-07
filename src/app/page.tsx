@@ -5,6 +5,7 @@ import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
 import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
 import { GameOverDialog } from '@/components/game/GameOverDialog';
+import { EventLogCard } from '@/components/game/EventLogCard'; // Import EventLogCard
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -14,6 +15,7 @@ export default function StreetEmpirePage() {
     playerStats,
     marketPrices,
     localHeadlines,
+    eventLog, // Destructure eventLog
     isLoadingNextDay,
     isLoadingMarket,
     isGameOver,
@@ -23,7 +25,7 @@ export default function StreetEmpirePage() {
     resetGame,
   } = useGameLogic();
 
-  if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) { // Added cash check for robustness
+  if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
         <Loader2 className="h-16 w-16 animate-spin text-accent mb-4" />
@@ -44,23 +46,32 @@ export default function StreetEmpirePage() {
         </p>
       </header>
 
-      <main className="w-full max-w-3xl space-y-6">
-        <PlayerStatsCard playerStats={playerStats} />
-        <MarketInfoCard 
-          marketPrices={marketPrices} 
-          localHeadlines={localHeadlines} 
-          isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0)}
-          playerStats={playerStats}
-          buyDrug={buyDrug}
-          sellDrug={sellDrug}
-        />
-        <GameControls 
+      <main className="w-full max-w-3xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
+          <PlayerStatsCard playerStats={playerStats} />
+        </div>
+        <div className="lg:col-span-2 space-y-6">
+          <MarketInfoCard 
+            marketPrices={marketPrices} 
+            localHeadlines={localHeadlines} 
+            isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0)}
+            playerStats={playerStats}
+            buyDrug={buyDrug}
+            sellDrug={sellDrug}
+          />
+           <EventLogCard eventLog={eventLog} /> {/* Add EventLogCard here */}
+        </div>
+      </main>
+      
+      <div className="w-full max-w-3xl mt-6">
+         <GameControls 
           onNextDay={handleNextDay} 
           isLoading={isLoadingNextDay}
           isGameOver={isGameOver}
           onResetGame={resetGame}
         />
-      </main>
+      </div>
+
 
       <GameOverDialog
         isOpen={isGameOver}
@@ -77,4 +88,3 @@ export default function StreetEmpirePage() {
     </div>
   );
 }
-
