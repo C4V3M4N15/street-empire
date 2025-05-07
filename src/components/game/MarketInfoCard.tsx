@@ -167,7 +167,7 @@ export function MarketInfoCard({
                 </h3>
 
                 {marketPrices.length > 0 ? (
-                  <div className="pr-1 max-h-80 overflow-y-auto"> {/* Adjusted height for visibility without scroll for 8 items */}
+                  <div className="pr-1"> {/* REMOVED max-h-80 overflow-y-auto */}
                     {marketPrices.map((drug, index) => {
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
@@ -189,7 +189,7 @@ export function MarketInfoCard({
                         <div className="py-1"> 
                           <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> 
                             <div className="col-span-1 sm:col-span-1">
-                              <p className="text-sm font-medium truncate" title={drug.drug}> {/* Drug name color is default */}
+                              <p className="text-sm font-medium truncate text-foreground" title={drug.drug}> {/* Drug name color is default */}
                                 {getIconRelativeToBasePrice(drug.price, basePrice)} {/* Icon based on current vs base */}
                                 {drug.drug}
                               </p>
@@ -471,4 +471,5 @@ export function MarketInfoCard({
     </Card>
   );
 }
+
 
