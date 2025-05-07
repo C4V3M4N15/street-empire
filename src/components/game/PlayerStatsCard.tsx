@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { PlayerStats } from '@/types/game';
@@ -144,4 +145,3 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
     </Card>
   );
 }
-
