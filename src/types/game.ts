@@ -14,11 +14,11 @@ export interface PlayerStats {
   name: string;
   health: number;
   cash: number;
+  inventory: { [drugName: string]: number }; // drugName -> quantity
   reputation: number;
   daysPassed: number;
   currentLocation: string;
   rank: PlayerRank;
-  // Future: inventory: { [drugName: string]: number };
 }
 
 export interface GameState {
@@ -30,3 +30,4 @@ export interface GameState {
   isGameOver: boolean;
   gameMessage: string | null; // For combat results or other events
 }
+

@@ -17,11 +17,13 @@ export default function StreetEmpirePage() {
     isLoadingNextDay,
     isLoadingMarket,
     isGameOver,
+    buyDrug,
+    sellDrug,
     handleNextDay,
     resetGame,
   } = useGameLogic();
 
-  if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0) {
+  if (isLoadingMarket && playerStats.daysPassed === 0 && marketPrices.length === 0 && playerStats.cash === 1000) { // Added cash check for robustness
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
         <Loader2 className="h-16 w-16 animate-spin text-accent mb-4" />
@@ -47,7 +49,10 @@ export default function StreetEmpirePage() {
         <MarketInfoCard 
           marketPrices={marketPrices} 
           localHeadlines={localHeadlines} 
-          isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0)} 
+          isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0)}
+          playerStats={playerStats}
+          buyDrug={buyDrug}
+          sellDrug={sellDrug}
         />
         <GameControls 
           onNextDay={handleNextDay} 
@@ -72,3 +77,4 @@ export default function StreetEmpirePage() {
     </div>
   );
 }
+

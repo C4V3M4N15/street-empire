@@ -11,9 +11,10 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
   health: 100,
   cash: 1000,
+  inventory: {}, // Initialize empty inventory
   reputation: 0,
   daysPassed: 0,
-  currentLocation: 'New York', // Example location
+  currentLocation: 'New York', 
   rank: 'Rookie',
 };
 
@@ -37,7 +38,6 @@ export function useGameLogic() {
     try {
       const prices = await getMarketPrices(INITIAL_PLAYER_STATS.currentLocation);
       const headlines = await getLocalHeadlines(INITIAL_PLAYER_STATS.currentLocation);
-      // Apply headline effects to initial prices
       const adjustedPrices = applyHeadlineImpacts(prices, headlines);
       setGameState(prev => ({
         ...prev,
@@ -63,9 +63,82 @@ export function useGameLogic() {
     
     return prices.map(drugPrice => ({
       ...drugPrice,
-      price: Math.max(1, Math.round(drugPrice.price * (1 + totalImpactFactor))), // Ensure price doesn't go below 1
+      price: Math.max(1, Math.round(drugPrice.price * (1 + totalImpactFactor))), 
     }));
   };
+
+  const buyDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      const cost = quantity * price;
+
+      if (quantity <= 0) {
+        toast({ title: "Invalid Quantity", description: "Please enter a positive amount to buy.", variant: "destructive" });
+        return prev;
+      }
+      if (currentStats.cash < cost) {
+        toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" });
+        return prev;
+      }
+
+      const newInventory = { ...currentStats.inventory };
+      newInventory[drugName] = (newInventory[drugName] || 0) + quantity;
+
+      const newCash = currentStats.cash - cost;
+      const newReputation = currentStats.reputation + Math.floor(quantity / 10) + 1; 
+
+      toast({ title: "Purchase Successful", description: `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.` , variant: "default"});
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          inventory: newInventory,
+          reputation: newReputation,
+        },
+      };
+    });
+  }, [toast]);
+
+  const sellDrug = useCallback((drugName: string, quantity: number, price: number) => {
+    setGameState(prev => {
+      const currentStats = prev.playerStats;
+      const currentDrugQuantity = currentStats.inventory[drugName] || 0;
+      const earnings = quantity * price;
+
+      if (quantity <= 0) {
+        toast({ title: "Invalid Quantity", description: "Please enter a positive amount to sell.", variant: "destructive" });
+        return prev;
+      }
+      if (currentDrugQuantity < quantity) {
+        toast({ title: "Not Enough Stock", description: `You only have ${currentDrugQuantity.toLocaleString()} ${drugName} to sell.`, variant: "destructive" });
+        return prev;
+      }
+
+      const newInventory = { ...currentStats.inventory };
+      newInventory[drugName] = currentDrugQuantity - quantity;
+      if (newInventory[drugName] === 0) {
+        delete newInventory[drugName]; 
+      }
+
+      const newCash = currentStats.cash + earnings;
+      const newReputation = currentStats.reputation + Math.floor(quantity / 5) + 1; 
+
+      toast({ title: "Sale Successful", description: `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`, variant: "default" });
+
+      return {
+        ...prev,
+        playerStats: {
+          ...currentStats,
+          cash: newCash,
+          inventory: newInventory,
+          reputation: newReputation,
+        },
+      };
+    });
+  }, [toast]);
+
 
   const handleNextDay = useCallback(async () => {
     if (gameState.isGameOver) return;
@@ -78,15 +151,12 @@ export function useGameLogic() {
     let newReputation = gameState.playerStats.reputation;
     let newLocation = gameState.playerStats.currentLocation;
 
-    // Simulate travel to a new city every 7 days (optional, for variety)
     if (newDaysPassed % 7 === 0) {
         const currentLocationIndex = CITIES.indexOf(newLocation);
         newLocation = CITIES[(currentLocationIndex + 1) % CITIES.length];
         toast({ title: "Travel", description: `You moved to ${newLocation}.` });
     }
 
-
-    // Fetch new market data
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -98,7 +168,6 @@ export function useGameLogic() {
       toast({ title: "Market Error", description: "Could not update market data.", variant: "destructive" });
     }
     
-    // Random event: Combat (e.g., 25% chance)
     if (Math.random() < 0.25) {
       const opponentTypes = ["police", "gang", "fiend"];
       const opponentType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
@@ -110,10 +179,9 @@ export function useGameLogic() {
         
         if (combatResult.playerWins) {
           toast({ title: "Combat Over", description: `You survived the encounter with ${opponentType}, but lost ${combatResult.healthLost} health.` });
-          // Small reputation boost for winning against gangs?
           if(opponentType === "gang") newReputation += 5;
         } else {
-          const cashLoss = Math.min(newCash, Math.floor(newCash * 0.5)); // Lose up to 50% cash
+          const cashLoss = Math.min(newCash, Math.floor(newCash * 0.5)); 
           newCash -= cashLoss;
           toast({ 
             title: "Combat Lost!", 
@@ -128,8 +196,6 @@ export function useGameLogic() {
     }
 
     let newRank = gameState.playerStats.rank;
-    // Basic rank logic: (simplified for now)
-    // This would typically involve checking cash thresholds over time.
     if (newCash > 50000 && newRank === 'Distributor') newRank = 'Baron';
     else if (newCash > 20000 && newRank === 'Supplier') newRank = 'Distributor';
     else if (newCash > 10000 && newRank === 'Dealer') newRank = 'Supplier';
@@ -172,16 +238,19 @@ export function useGameLogic() {
       marketPrices: [],
       localHeadlines: [],
       isLoadingNextDay: false,
-      isLoadingMarket: true, // Will trigger fetchInitialMarketData
+      isLoadingMarket: true, 
       isGameOver: false,
       gameMessage: null,
     });
-    fetchInitialMarketData(); // Re-fetch initial data
+    fetchInitialMarketData(); 
   }, [fetchInitialMarketData]);
 
   return {
     ...gameState,
+    buyDrug,
+    sellDrug,
     handleNextDay,
     resetGame,
   };
 }
+
