@@ -19,6 +19,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   daysPassed: 0,
   currentLocation: NYC_LOCATIONS[0], // Start in Manhattan
   rank: 'Rookie',
+  maxInventoryCapacity: 10, // Default carrying capacity
 };
 
 
@@ -94,6 +95,12 @@ export function useGameLogic() {
       }
       if (currentStats.cash < cost) {
         toast({ title: "Not Enough Cash", description: `You need $${cost.toLocaleString()} but only have $${currentStats.cash.toLocaleString()}.`, variant: "destructive" });
+        return prev;
+      }
+
+      const currentTotalUnits = Object.values(currentStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
+      if (currentTotalUnits + quantity > currentStats.maxInventoryCapacity) {
+        toast({ title: "Not Enough Space", description: `You can only carry ${currentStats.maxInventoryCapacity - currentTotalUnits} more units. Current capacity: ${currentTotalUnits}/${currentStats.maxInventoryCapacity}.`, variant: "destructive" });
         return prev;
       }
 

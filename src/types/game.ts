@@ -24,6 +24,7 @@ export interface PlayerStats {
   daysPassed: number;
   currentLocation: string;
   rank: PlayerRank;
+  maxInventoryCapacity: number; // Maximum number of drug units player can carry
 }
 
 export type LogEventType = 

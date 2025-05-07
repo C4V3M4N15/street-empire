@@ -3,7 +3,7 @@
 
 import type { PlayerStats } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase } from 'lucide-react';
+import { User, Heart, DollarSign, Star, CalendarDays, MapPin, Award, Package, Briefcase, ShoppingBag } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -44,6 +44,8 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
         <StatItem icon={CalendarDays} label="Days Passed" value={playerStats.daysPassed} />
         <StatItem icon={MapPin} label="Location" value={playerStats.currentLocation} />
         <StatItem icon={Award} label="Rank" value={playerStats.rank} />
+        <StatItem icon={ShoppingBag} label="Capacity" value={`${totalInventoryUnits.toLocaleString()} / ${playerStats.maxInventoryCapacity.toLocaleString()} units`} />
+
 
         {hasInventory && (
           <Accordion type="single" collapsible className="w-full pt-2">
@@ -51,7 +53,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
               <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline text-muted-foreground hover:text-accent [&[data-state=open]>svg]:text-accent">
                 <div className="flex items-center space-x-3">
                   <Briefcase className="h-5 w-5 text-accent" />
-                  <span>Inventory ({totalInventoryUnits.toLocaleString()} units)</span>
+                  <span>Drug Stash ({totalInventoryUnits.toLocaleString()} units)</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-0">
@@ -83,7 +85,7 @@ export function PlayerStatsCard({ playerStats }: PlayerStatsCardProps) {
          {!hasInventory && (
             <div className="py-2 text-sm text-muted-foreground flex items-center space-x-3 border-t border-border/50 mt-2 pt-3">
                  <Briefcase className="h-5 w-5 text-accent" />
-                <span>Inventory is empty.</span>
+                <span>Drug Stash is empty.</span>
             </div>
         )}
       </CardContent>

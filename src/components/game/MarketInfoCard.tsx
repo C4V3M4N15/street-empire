@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map } from 'lucide-react';
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store } from 'lucide-react';
 import type { PlayerStats } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -103,12 +103,15 @@ export function MarketInfoCard({
     <Card className="shadow-md">
       <Tabs defaultValue="market" className="w-full">
         <CardHeader className="pb-0 pt-4 px-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="market" className="flex items-center">
                     <LineChart className="mr-2 h-4 w-4" /> Market
                 </TabsTrigger>
                 <TabsTrigger value="travel" className="flex items-center">
                     <Map className="mr-2 h-4 w-4" /> Travel
+                </TabsTrigger>
+                <TabsTrigger value="shop" className="flex items-center">
+                    <Store className="mr-2 h-4 w-4" /> Shop
                 </TabsTrigger>
             </TabsList>
         </CardHeader>
@@ -133,10 +136,13 @@ export function MarketInfoCard({
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
                       const costForBuy = currentQuantityInput * drug.price;
-                      const valueForSell = currentQuantityInput * drug.price;
+                      // const valueForSell = currentQuantityInput * drug.price; // Not directly used for display here
 
                       const canBuy = playerStats.cash >= costForBuy && currentQuantityInput > 0;
                       const canSell = playerHoldings >= currentQuantityInput && currentQuantityInput > 0;
+                      const currentTotalUnits = Object.values(playerStats.inventory).reduce((sum, item) => sum + item.quantity, 0);
+                      const canFit = currentTotalUnits + currentQuantityInput <= playerStats.maxInventoryCapacity;
+
 
                       return (
                         <React.Fragment key={drug.drug}>
@@ -164,7 +170,7 @@ export function MarketInfoCard({
                                 onClick={() => {
                                   if (currentQuantityInput > 0) buyDrug(drug.drug, currentQuantityInput, drug.price);
                                 }}
-                                disabled={isLoading || !canBuy}
+                                disabled={isLoading || !canBuy || !canFit}
                                 className="h-8 px-2.5 text-xs bg-accent hover:bg-accent/90 text-accent-foreground"
                               >
                                 <ShoppingCart className="h-3 w-3 mr-1 sm:mr-0" /> <span className="hidden sm:inline">Buy</span>
@@ -184,7 +190,8 @@ export function MarketInfoCard({
                           </div>
                           {currentQuantityInput > 0 && (
                             <div className="text-xs text-muted-foreground h-3.5">
-                              {costForBuy > 0 && canBuy && <p>Cost: ${costForBuy.toLocaleString()}</p> }
+                              {costForBuy > 0 && canBuy && !canFit && <p className="text-destructive">Not enough space</p>}
+                              {costForBuy > 0 && canBuy && canFit && <p>Cost: ${costForBuy.toLocaleString()}</p> }
                               {costForBuy > 0 && !canBuy && playerStats.cash < costForBuy && <p className="text-destructive">Need: ${costForBuy.toLocaleString()}</p>}
                             </div>
                           )}
@@ -221,6 +228,18 @@ export function MarketInfoCard({
               fetchHeadlinesForLocation={fetchHeadlinesForLocation}
               isLoading={isLoading}
             />
+          </CardContent>
+        </TabsContent>
+         <TabsContent value="shop">
+          <CardContent className="p-4 pt-3">
+            <h3 className="text-md font-semibold mb-2 flex items-center">
+              <Store className="mr-2 h-4 w-4 text-accent" /> General Store ({playerStats.currentLocation})
+            </h3>
+            <div className="min-h-[200px] flex items-center justify-center border-2 border-dashed border-border rounded-md">
+              <p className="text-sm text-muted-foreground">
+                Shop items (healing, weapons, armor, capacity upgrades) coming soon!
+              </p>
+            </div>
           </CardContent>
         </TabsContent>
       </Tabs>
