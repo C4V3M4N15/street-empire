@@ -18,36 +18,36 @@ interface NycMapProps {
 const boroughs = [
   {
     name: 'Manhattan',
-    pathData: "M135,40 L125,150 L130,220 L140,220 L145,150 L135,40 Z",
-    fillColorClass: 'fill-green-500',
+    pathData: "M135,40 L125,150 L130,220 L140,220 L145,150 L135,40 Z", // Tall and thin
+    fillColorClass: 'fill-green-500/70', // Semi-transparent fill
     strokeColorClass: 'stroke-green-700',
     labelPosition: { x: 135, y: 130 },
   },
   {
     name: 'Brooklyn',
-    pathData: "M140,180 L135,230 L160,260 L190,240 L180,210 L140,180 Z",
-    fillColorClass: 'fill-yellow-400',
+    pathData: "M140,180 L135,230 L160,260 L190,240 L180,210 L140,180 Z", // Southeast of Manhattan
+    fillColorClass: 'fill-yellow-400/70',
     strokeColorClass: 'stroke-yellow-600',
     labelPosition: { x: 160, y: 220 },
   },
   {
     name: 'Queens',
-    pathData: "M180,120 L175,200 L190,235 L240,220 L250,150 L220,110 L180,120 Z",
-    fillColorClass: 'fill-orange-500',
+    pathData: "M180,120 L175,200 L190,235 L240,220 L250,150 L220,110 L180,120 Z", // East of Manhattan, North of Brooklyn
+    fillColorClass: 'fill-orange-500/70',
     strokeColorClass: 'stroke-orange-700',
     labelPosition: { x: 215, y: 170 },
   },
   {
     name: 'The Bronx',
-    pathData: "M140,10 L145,60 L190,70 L200,30 L170,5 L140,10 Z",
-    fillColorClass: 'fill-red-500',
+    pathData: "M140,10 L145,60 L190,70 L200,30 L170,5 L140,10 Z", // North of Manhattan
+    fillColorClass: 'fill-red-500/70',
     strokeColorClass: 'stroke-red-700',
     labelPosition: { x: 170, y: 40 },
   },
   {
     name: 'Staten Island',
-    pathData: "M70,220 L60,250 L90,280 L110,260 L100,230 L70,220 Z",
-    fillColorClass: 'fill-purple-500',
+    pathData: "M70,220 L60,250 L90,280 L110,260 L100,230 L70,220 Z", // Southwest, separated
+    fillColorClass: 'fill-purple-500/70',
     strokeColorClass: 'stroke-purple-700',
     labelPosition: { x: 85, y: 250 },
   },
@@ -106,8 +106,8 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
   return (
     <div className="space-y-4">
       <div 
-        className="relative w-full aspect-[350/300] bg-blue-300/10 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/30"
-        data-ai-hint="new york city map"
+        className="relative w-full aspect-[350/300] bg-blue-900/30 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/30" // Added bg-blue-900/30 for background
+        data-ai-hint="new york city map" // Added data-ai-hint
       >
         <svg 
             viewBox="0 0 300 300" // Adjusted viewBox to better fit the paths
@@ -130,13 +130,13 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
                     'stroke-[2px]', // Adjusted stroke width
                     'transition-all duration-200 ease-in-out',
                     'cursor-pointer',
-                    isCurrent ? 'opacity-100 scale-[1.02]' : 'opacity-70 hover:opacity-90',
-                    isHovered && !isCurrent ? 'opacity-95 scale-[1.03]' : '',
+                    isCurrent ? 'opacity-100 scale-[1.02] stroke-white' : 'opacity-70 hover:opacity-90', // Highlight current with white stroke
+                    isHovered && !isCurrent ? 'opacity-95 scale-[1.03] stroke-yellow-300' : '', // Highlight hovered with yellow stroke
                     isGameLoading && !isCurrent ? 'cursor-not-allowed opacity-50' : '',
                     isCurrent && isGameLoading ? 'cursor-not-allowed' : ''
                   )}
                   style={{
-                    filter: isHovered || isCurrent ? 'drop-shadow(0px 0px 5px rgba(255,255,255,0.7))' : '',
+                    filter: isHovered || isCurrent ? 'drop-shadow(0px 0px 8px rgba(255,255,255,0.6))' : 'drop-shadow(0px 1px 2px rgba(0,0,0,0.5))',
                   }}
                   onMouseEnter={() => handleMouseEnter(borough.name)}
                   onMouseLeave={handleMouseLeave}
@@ -147,19 +147,21 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
                 <text
                   x={borough.labelPosition.x}
                   y={borough.labelPosition.y}
-                  className="text-[8px] sm:text-[10px] font-bold fill-white pointer-events-none"
+                  className="text-[8px] sm:text-[10px] font-bold fill-white pointer-events-none select-none"
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  style={{ filter: 'drop-shadow(0px 0px 2px rgba(0,0,0,0.7))' }}
+                  style={{ filter: 'drop-shadow(0px 0px 2px rgba(0,0,0,0.8)) drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' }}
                 >
                   {borough.name}
                 </text>
                 {isCurrent && (
                   <MapPin 
-                    className="text-white" 
-                    size={16}
-                    x={borough.labelPosition.x - 8} // Adjust to center icon
-                    y={borough.labelPosition.y - 20} // Position above label
+                    className="text-yellow-300 animate-pulse" // Make current location pin more prominent
+                    size={18} // Slightly larger
+                    x={borough.labelPosition.x - 9} // Adjust to center icon
+                    y={borough.labelPosition.y - 22} // Position above label
+                    strokeWidth={2.5}
+                    style={{ filter: 'drop-shadow(0px 0px 3px rgba(0,0,0,1))' }}
                   />
                 )}
               </g>
