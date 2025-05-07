@@ -131,7 +131,7 @@ export function useGameLogic() {
       };
 
       const newCash = currentStats.cash - cost;
-      const newReputation = currentStats.reputation + Math.floor(quantity / 10) + 1;
+      const newReputation = currentStats.reputation + Math.floor(quantity / 10) + 1; // Reputation still changes for other potential game mechanics
 
       const successMsg = `Bought ${quantity} ${drugName} for $${cost.toLocaleString()}.`;
       toast({ title: "Purchase Successful", description: successMsg, variant: "default"});
@@ -182,7 +182,7 @@ export function useGameLogic() {
       }
 
       const newCash = currentStats.cash + earnings;
-      const newReputation = currentStats.reputation + Math.floor(quantity / 5) + 1;
+      const newReputation = currentStats.reputation + Math.floor(quantity / 5) + 1; // Reputation still changes for other potential game mechanics
 
       const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
       toast({ title: "Sale Successful", description: successMsg, variant: "default" });
@@ -373,7 +373,7 @@ export function useGameLogic() {
         
         currentStats.health -= actualHealthLost;
         currentStats.cash += combatOutcome.cashChange;
-        currentStats.reputation += combatOutcome.reputationChange;
+        currentStats.reputation += combatOutcome.reputationChange; // Reputation still changes from combat for other game mechanics
 
         currentStats.health = Math.max(0, currentStats.health);
         currentStats.cash = Math.max(0, currentStats.cash);
@@ -419,13 +419,14 @@ export function useGameLogic() {
       return;
     }
     
+    // Rank Update - Now based on cash only
     const oldRank = currentStats.rank;
-    if (currentStats.cash > 50000 && currentStats.reputation > 200 && currentStats.rank !== 'Kingpin') currentStats.rank = 'Kingpin';
-    else if (currentStats.cash > 25000 && currentStats.reputation > 100 && !['Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Baron';
-    else if (currentStats.cash > 10000 && currentStats.reputation > 50 && !['Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Distributor';
-    else if (currentStats.cash > 5000 && currentStats.reputation > 25 && !['Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Supplier';
-    else if (currentStats.cash > 2000 && currentStats.reputation > 10 && !['Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Dealer';
-    else if (currentStats.cash > 1000 && currentStats.reputation > 5 && !['Peddler', 'Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Peddler';
+    if (currentStats.cash > 50000 && currentStats.rank !== 'Kingpin') currentStats.rank = 'Kingpin';
+    else if (currentStats.cash > 25000 && !['Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Baron';
+    else if (currentStats.cash > 10000 && !['Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Distributor';
+    else if (currentStats.cash > 5000 && !['Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Supplier';
+    else if (currentStats.cash > 2000 && !['Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Dealer';
+    else if (currentStats.cash > 1000 && !['Peddler', 'Dealer', 'Supplier', 'Distributor', 'Baron', 'Kingpin'].includes(currentStats.rank)) currentStats.rank = 'Peddler';
     
     if (currentStats.rank !== oldRank) {
       const rankUpMsg = `You've been promoted to ${currentStats.rank}!`;
@@ -474,3 +475,4 @@ export function useGameLogic() {
     fetchHeadlinesForLocation,
   };
 }
+
