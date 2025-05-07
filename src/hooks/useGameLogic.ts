@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -122,7 +123,7 @@ export function useGameLogic() {
       });
       return { ...drugPrice, price: Math.max(1, Math.round(newPrice)) };
     });
-  }, []); // drugCategories is stable, so not needed in dep array if imported directly from module scope
+  }, []); 
 
   const fetchInitialData = useCallback(async () => {
     setGameState(prev => ({ ...prev, isLoadingMarket: true }));
@@ -174,7 +175,7 @@ export function useGameLogic() {
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry, applyHeadlineImpacts]);
+  }, [toast, addLogEntry, applyHeadlineImpacts]); // gameState.boroughHeatLevels is intentionally omitted for initial load character
 
   useEffect(() => {
     fetchInitialData();
@@ -204,15 +205,27 @@ export function useGameLogic() {
     setGameState(prev => {
       const currentStats = prev.playerStats;
       const currentItem = currentStats.inventory[drugName];
-      if (!currentItem || currentItem.quantity < quantity) { toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }); return prev; }
       if (quantity <= 0) { toast({ title: "Invalid Quantity", description: "Please enter a positive amount.", variant: "destructive" }); return prev; }
+      if (!currentItem || currentItem.quantity < quantity) { toast({ title: "Not Enough Stock", description: `You only have ${currentItem?.quantity || 0} ${drugName}.`, variant: "destructive" }); return prev; }
+      
       const earnings = quantity * price;
       const newInventory = { ...currentStats.inventory };
-      const avgCostPerUnit = currentItem.totalCost / currentItem.quantity;
+      
+      // Calculate cost of goods sold based on average cost
+      // Ensure quantity is not zero before division to prevent NaN
+      const avgCostPerUnit = currentItem.quantity > 0 ? (currentItem.totalCost / currentItem.quantity) : 0;
       const costOfGoodsSold = avgCostPerUnit * quantity;
+      
       const newQuantity = currentItem.quantity - quantity;
-      if (newQuantity > 0) { newInventory[drugName] = { quantity: newQuantity, totalCost: Math.max(0, currentItem.totalCost - costOfGoodsSold) }; } 
-      else { delete newInventory[drugName]; }
+
+      if (newQuantity > 0) { 
+        newInventory[drugName] = { 
+          quantity: newQuantity, 
+          totalCost: Math.max(0, currentItem.totalCost - costOfGoodsSold) 
+        }; 
+      } else { 
+        delete newInventory[drugName]; 
+      }
       const successMsg = `Sold ${quantity} ${drugName} for $${earnings.toLocaleString()}.`;
       toast({ title: "Sale Successful", description: successMsg }); addLogEntry('sell', successMsg);
       const newPlayerActivity = { ...prev.playerActivityInBoroughsThisDay, [currentStats.currentLocation]: (prev.playerActivityInBoroughsThisDay[currentStats.currentLocation] || 0) + 1 };
@@ -246,16 +259,26 @@ export function useGameLogic() {
     setGameState(prev => {
       const cs = prev.playerStats;
       if (cs.cash < itemToBuy.price) { toast({ title: "Not Enough Cash", variant: "destructive" }); return prev; }
-      if (cs.health >= MAX_PLAYER_HEALTH) { toast({ title: "Full Health" }); return prev; }
+      if (cs.health >= MAX_PLAYER_HEALTH) { toast({ title: "Full Health", description: "You are already at maximum health." }); return prev; }
+      
       let healthToRestore = 0;
-      if (itemToBuy.isFullHeal) healthToRestore = MAX_PLAYER_HEALTH - cs.health;
-      else if (itemToBuy.isPercentageHeal && itemToBuy.healAmount) healthToRestore = Math.round(MAX_PLAYER_HEALTH * (itemToBuy.healAmount / 100));
-      else if (itemToBuy.healAmount) healthToRestore = itemToBuy.healAmount;
+      if (itemToBuy.isFullHeal) {
+        healthToRestore = MAX_PLAYER_HEALTH - cs.health;
+      } else if (itemToBuy.isPercentageHeal && typeof itemToBuy.healAmount === 'number') {
+        healthToRestore = Math.round(MAX_PLAYER_HEALTH * (itemToBuy.healAmount / 100));
+      } else if (typeof itemToBuy.healAmount === 'number') {
+        healthToRestore = itemToBuy.healAmount;
+      }
+      
       const newHealth = Math.min(MAX_PLAYER_HEALTH, cs.health + healthToRestore);
       const healedAmount = newHealth - cs.health;
-      if (healedAmount <= 0) { toast({ title: "No Effect" }); return prev; }
+
+      if (healedAmount <= 0) { toast({ title: "No Effect", description: "This item provided no additional healing." }); return prev; }
+      
       const msg = `Used ${itemToBuy.name}. Healed ${healedAmount} HP.`;
-      toast({ title: "Healing Applied!", description: msg }); addLogEntry('shop_healing_purchase', msg); addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
+      toast({ title: "Healing Applied!", description: msg }); 
+      addLogEntry('shop_healing_purchase', msg); 
+      addLogEntry('health_update', `Health +${healedAmount} to ${newHealth}.`);
       return { ...prev, playerStats: { ...cs, cash: cs.cash - itemToBuy.price, health: newHealth } };
     });
   }, [toast, addLogEntry]);
@@ -271,25 +294,49 @@ export function useGameLogic() {
     });
   }, [toast, addLogEntry]);
 
-  const travelToLocation = useCallback((targetLocation: string) => {
-    if (gameState.playerStats.currentLocation === targetLocation) { toast({ title: "Already There" }); return; }
-    setGameState(prev => {
-      const travelMessage = `Traveled from ${prev.playerStats.currentLocation} to ${targetLocation}.`;
-      toast({ title: "Travel Successful", description: travelMessage }); addLogEntry('travel', travelMessage);
-      (async () => {
-        setGameState(ip => ({...ip, isLoadingMarket: true}));
-        try {
-          let newPrices = await getMarketPrices(targetLocation);
-          const newHeadlines = await getLocalHeadlines(targetLocation);
-          newPrices = applyHeadlineImpacts(newPrices, newHeadlines);
-          newPrices = applyEventPriceModifiers(newPrices, prev.activeBoroughEvents[targetLocation]);
-          setGameState(ip => ({ ...ip, marketPrices: newPrices, localHeadlines: newHeadlines, isLoadingMarket: false }));
-          addLogEntry('info', `Market data for ${targetLocation} updated.`);
-        } catch (e) { console.error(e); toast({ title: "Market Error", variant: "destructive" }); setGameState(ip => ({...ip, isLoadingMarket: false}));}
-      })();
-      return { ...prev, playerStats: { ...prev.playerStats, currentLocation: targetLocation }};
-    });
-  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts]);
+  const travelToLocation = useCallback(async (targetLocation: string) => {
+    const currentLoc = gameState.playerStats.currentLocation;
+    if (currentLoc === targetLocation) { 
+      toast({ title: "Already There", description: `You are already in ${targetLocation}.` }); 
+      return; 
+    }
+
+    const travelMessage = `Traveled from ${currentLoc} to ${targetLocation}.`;
+    addLogEntry('travel', travelMessage);
+    toast({ title: "Travel Successful", description: travelMessage });
+
+    setGameState(prev => ({
+      ...prev,
+      playerStats: { ...prev.playerStats, currentLocation: targetLocation },
+      isLoadingMarket: true,
+      localHeadlines: [], // Clear old headlines immediately
+      marketPrices: [],   // Clear old prices immediately
+    }));
+
+    try {
+      const newPrices = await getMarketPrices(targetLocation);
+      const newHeadlines = await getLocalHeadlines(targetLocation);
+      
+      // Need to get the activeBoroughEvents from the latest state for price modification.
+      // This can be tricky if handleNextDay is also running. For travel, use the state at the time of travel.
+      const currentActiveEvents = gameState.activeBoroughEvents; 
+      
+      let finalPrices = applyHeadlineImpacts(newPrices, newHeadlines);
+      finalPrices = applyEventPriceModifiers(finalPrices, currentActiveEvents[targetLocation]);
+      
+      setGameState(prev => ({ 
+        ...prev, 
+        marketPrices: finalPrices, 
+        localHeadlines: newHeadlines, 
+        isLoadingMarket: false 
+      }));
+      addLogEntry('info', `Market data for ${targetLocation} updated.`);
+    } catch (e) { 
+      console.error("Market fetch error during travel:", e); 
+      toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" });
+      setGameState(prev => ({...prev, isLoadingMarket: false}));
+    }
+  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, applyEventPriceModifiers]); // Added applyEventPriceModifiers
 
   const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
     try { return await getLocalHeadlines(location); } 
@@ -298,6 +345,8 @@ export function useGameLogic() {
 
   const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     setGameState(prev => {
+      if (prev.isBattleActive) return prev; // Prevent starting battle if already in one
+
       const enemy = generateEnemyStats(opponentType, prev.playerStats);
       addLogEntry('info', `Battle started against ${enemy.name}!`);
       return {
@@ -322,6 +371,8 @@ export function useGameLogic() {
 
       if (action === 'attack') {
         const playerAttackPower = PLAYER_BASE_ATTACK + (newPlayerStats.equippedWeapon?.damageBonus || 0);
+        // const playerDefenseFromArmor = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0); // Used by enemy
+        
         const playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
         newEnemyStats.health = Math.max(0, newEnemyStats.health - playerDamage);
         newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `You hit ${newEnemyStats.name} for ${playerDamage} damage.`});
@@ -345,10 +396,25 @@ export function useGameLogic() {
         const generalLogType = playerWon ? 'combat_win' : 'combat_loss';
         addLogEntry(generalLogType, battleResult.narration);
         
-        if (!playerWon) {
-           return { ...prev, playerStats: { ...newPlayerStats, health: 0 }, currentEnemy: newEnemyStats, battleLog: newBattleLog, battleMessage: "You have been defeated!", isGameOver: true, isBattleActive: true };
+        let finalBattleMessage = playerWon ? `You defeated ${newEnemyStats.name}!` : "You have been defeated!";
+        let finalIsGameOver = prev.isGameOver;
+
+        if (!playerWon && newPlayerStats.health <= 0) { // Ensure game over only if health is 0
+          finalIsGameOver = true; // Player lost, game over
         }
-        return { ...prev, playerStats: newPlayerStats, currentEnemy: null, battleLog: newBattleLog, battleMessage: `You defeated ${newEnemyStats.name}!`, isBattleActive: true };
+        
+        // Update player health from battleResult if needed, though it's already modified above
+        // newPlayerStats.health is already set
+
+        return { 
+          ...prev, 
+          playerStats: newPlayerStats, 
+          currentEnemy: newEnemyStats, // Keep enemy stats to show final state if needed by UI
+          battleLog: newBattleLog, 
+          battleMessage: finalBattleMessage, 
+          isGameOver: finalIsGameOver,
+          isBattleActive: true, // Keep battle screen active to show message, then onEndBattle will clear it
+        };
       }
       return { ...prev, playerStats: newPlayerStats, currentEnemy: newEnemyStats, battleLog: newBattleLog.slice(-20) };
     });
@@ -356,10 +422,15 @@ export function useGameLogic() {
   
   const endBattleScreen = useCallback(() => {
     setGameState(prev => {
-      if (prev.playerStats.health <= 0 && !prev.isGameOver) {
-        return { ...prev, isBattleActive: false, currentEnemy: null, battleLog: [], battleMessage: null, isGameOver: true };
-      }
-      return { ...prev, isBattleActive: false, currentEnemy: null, battleLog: [], battleMessage: null };
+      const wasGameOverFromBattle = prev.playerStats.health <= 0 && prev.isBattleActive;
+      return { 
+        ...prev, 
+        isBattleActive: false, 
+        currentEnemy: null, 
+        battleLog: [], 
+        battleMessage: null,
+        isGameOver: prev.isGameOver || wasGameOverFromBattle, // Preserve game over state
+      };
     });
   }, []);
 
@@ -370,25 +441,31 @@ export function useGameLogic() {
     let currentStats = { ...gameState.playerStats };
     currentStats.daysPassed += 1;
     
-    // Heat update based on player activity
     let workingHeatLevels = { ...gameState.boroughHeatLevels };
     NYC_LOCATIONS.forEach(borough => {
       const activityCount = gameState.playerActivityInBoroughsThisDay[borough] || 0;
       const currentBoroughHeat = workingHeatLevels[borough] || 0;
-      if (activityCount > 0) workingHeatLevels[borough] = Math.min(5, currentBoroughHeat + 1);
-      else workingHeatLevels[borough] = Math.max(0, currentBoroughHeat - 1);
-      if(workingHeatLevels[borough] !== currentBoroughHeat) addLogEntry('info', `${borough} heat ${workingHeatLevels[borough] > currentBoroughHeat ? '+' : '-'}1 to ${workingHeatLevels[borough]}.`);
+      let newHeat = currentBoroughHeat;
+      if (activityCount > 0) newHeat = Math.min(5, currentBoroughHeat + 1);
+      else newHeat = Math.max(0, currentBoroughHeat - 1);
+      
+      if(newHeat !== currentBoroughHeat) {
+        addLogEntry('info', `${borough} heat changed by ${newHeat > currentBoroughHeat ? '+1' : '-1'} to ${newHeat}. Activity: ${activityCount}.`);
+      }
+      workingHeatLevels[borough] = newHeat;
     });
     
-    // Daily events and their heat impact
     const newDailyEvents = await getTodaysEvents(currentStats.daysPassed, workingHeatLevels);
     let eventProcessedHeatLevels = { ...workingHeatLevels };
+
     for (const borough in newDailyEvents) { 
       const event = newDailyEvents[borough];
       if (event?.effects.heatChange) { 
         const currentEventBoroughHeat = eventProcessedHeatLevels[borough] || 0;
         const updatedHeatByEvent = Math.max(0, Math.min(5, currentEventBoroughHeat + event.effects.heatChange));
-        if (updatedHeatByEvent !== currentEventBoroughHeat) addLogEntry('event_trigger', `${borough} heat: ${currentEventBoroughHeat} to ${updatedHeatByEvent} by ${event.name}.`);
+        if (updatedHeatByEvent !== currentEventBoroughHeat) {
+          addLogEntry('event_trigger', `${borough} heat further adjusted by ${event.effects.heatChange} to ${updatedHeatByEvent} due to event: ${event.name}.`);
+        }
         eventProcessedHeatLevels[borough] = updatedHeatByEvent;
       }
       if (event) {
@@ -396,35 +473,59 @@ export function useGameLogic() {
         addLogEntry('event_trigger', `Event in ${borough}: ${event.name} (${event.type}) - ${event.text}${durationText}`);
       }
     }
-    addLogEntry('info', `Day ${currentStats.daysPassed} in ${currentStats.currentLocation}. Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`);
+    addLogEntry('info', `Day ${currentStats.daysPassed} starting in ${currentStats.currentLocation}. Heat: ${eventProcessedHeatLevels[currentStats.currentLocation]}.`);
 
     const eventInCurrentLocation = newDailyEvents[currentStats.currentLocation];
     let combatTriggeredByEvent = false;
 
-    // Player impact from event in current location
     if (eventInCurrentLocation?.effects.playerImpact) {
-      const impact = eventInCurrentLocation.effects;
+      const impact = eventInCurrentLocation.effects.playerImpact; 
       toast({ title: `Event: ${eventInCurrentLocation.name}!`, description: impact.message, duration: 5000});
       addLogEntry('event_player_impact', `${eventInCurrentLocation.name}: ${impact.message}`);
-      if (impact.healthChange) { currentStats.health = Math.max(0, Math.min(MAX_PLAYER_HEALTH, currentStats.health + impact.healthChange)); addLogEntry('health_update', `Health ${impact.healthChange > 0 ? '+' : ''}${impact.healthChange}. Now ${currentStats.health}.`); }
-      if (impact.cashChange) { currentStats.cash = Math.max(0, currentStats.cash + impact.cashChange); addLogEntry('info', `Cash ${impact.cashChange > 0 ? '+' : ''}$${Math.abs(impact.cashChange)}.`) }
-      if (impact.reputationChange) { currentStats.reputation += impact.reputationChange; addLogEntry('info', `Reputation ${impact.reputationChange > 0 ? '+' : ''}${impact.reputationChange}.`); }
+      
+      if (impact.healthChange) { 
+        const oldHealth = currentStats.health;
+        currentStats.health = Math.max(0, Math.min(MAX_PLAYER_HEALTH, currentStats.health + impact.healthChange)); 
+        addLogEntry('health_update', `Health ${impact.healthChange > 0 ? '+' : ''}${impact.healthChange} (from ${oldHealth} to ${currentStats.health}) due to ${eventInCurrentLocation.name}.`); 
+      }
+      if (impact.cashChange) { 
+        currentStats.cash = Math.max(0, currentStats.cash + impact.cashChange); 
+        addLogEntry('info', `Cash ${impact.cashChange > 0 ? '+' : ''}$${Math.abs(impact.cashChange)} due to ${eventInCurrentLocation.name}. New balance: $${currentStats.cash.toLocaleString()}`); 
+      }
+      if (impact.reputationChange) { 
+        currentStats.reputation += impact.reputationChange; 
+        addLogEntry('info', `Reputation ${impact.reputationChange > 0 ? '+' : ''}${impact.reputationChange} due to ${eventInCurrentLocation.name}. New rep: ${currentStats.reputation}.`); 
+      }
+      
       if (currentStats.health <= 0) {
-        setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, activeBoroughEvents: newDailyEvents, boroughHeatLevels: eventProcessedHeatLevels, playerActivityInBoroughsThisDay: {} }));
-        toast({ title: "Game Over", description: "The event was too much.", variant: "destructive" }); addLogEntry('game_over', "Succumbed to event impact.");
+        setGameState(prev => ({ 
+          ...prev, 
+          playerStats: currentStats, 
+          isGameOver: true, 
+          isLoadingNextDay: false, 
+          activeBoroughEvents: newDailyEvents, 
+          boroughHeatLevels: eventProcessedHeatLevels, 
+          playerActivityInBoroughsThisDay: {},
+          battleMessage: `Overcome by event: ${eventInCurrentLocation.name}.` 
+        }));
+        toast({ title: "Game Over", description: `Succumbed to event: ${eventInCurrentLocation.name}.`, variant: "destructive" }); 
+        addLogEntry('game_over', `Player defeated by event: ${eventInCurrentLocation.name}.`);
         return;
       }
       if (impact.triggerCombat) {
          combatTriggeredByEvent = true;
-         let opponentTypeForEvent: 'police' | 'gang' | 'fiend' = 'fiend'; 
-         if (impact.triggerCombat === 'police_raid') opponentTypeForEvent = 'police';
-         else if (impact.triggerCombat === 'gang_activity') opponentTypeForEvent = 'gang';
-         else if (impact.triggerCombat === 'fiend_encounter') opponentTypeForEvent = 'fiend'; 
+         const opponentMap: Record<string, 'police' | 'gang' | 'fiend'> = {
+            'police_raid': 'police',
+            'gang_activity': 'gang',
+            'fiend_encounter': 'fiend',
+            'desperate_seller': 'fiend', 
+            'mugging': 'fiend', 
+         };
+         const opponentTypeForEvent = opponentMap[impact.triggerCombat] || 'fiend'; 
          startBattle(opponentTypeForEvent);
       }
     }
     
-    // Market Update
     let newMarketPrices: DrugPrice[] = [];
     let newLocalHeadlines: LocalHeadline[] = [];
     try {
@@ -432,25 +533,34 @@ export function useGameLogic() {
       newLocalHeadlines = await getLocalHeadlines(currentStats.currentLocation);
       newMarketPrices = applyHeadlineImpacts(newMarketPrices, newLocalHeadlines);
       newMarketPrices = applyEventPriceModifiers(newMarketPrices, eventInCurrentLocation); 
-    } catch (e) { console.error(e); toast({ title: "Market Error", variant: "destructive" }); addLogEntry('info', "Market update failed."); }
+    } catch (e) { 
+        console.error("Error fetching market data on next day:", e); 
+        toast({ title: "Market Error", description:"Failed to update market data.", variant: "destructive" }); 
+        addLogEntry('info', "Market update failed on next day."); 
+    }
     
-    // Random Combat Encounter based on heat (if not already in combat from event)
     const heatInCurrentLocation = eventProcessedHeatLevels[currentStats.currentLocation] || 0;
-    const randomEncounterChance = 0.10 + (heatInCurrentLocation * 0.08); // Base 10%, +8% per heat level
+    const randomEncounterChance = 0.10 + (heatInCurrentLocation * 0.08); 
 
     if (!combatTriggeredByEvent && !gameState.isBattleActive && currentStats.health > 0 && Math.random() < randomEncounterChance) { 
       const opponentTypes = ["police", "gang", "fiend"] as const;
       let selectedOpponentType: 'police' | 'gang' | 'fiend';
       const randomRoll = Math.random();
-      // Weighted selection based on heat
       if (randomRoll < (0.25 + heatInCurrentLocation * 0.10)) selectedOpponentType = 'police'; 
       else if (randomRoll < (0.60 + heatInCurrentLocation * 0.05)) selectedOpponentType = 'gang'; 
       else selectedOpponentType = 'fiend';
-      addLogEntry('info', `Encountered ${selectedOpponentType} in ${currentStats.currentLocation}. Heat: ${heatInCurrentLocation}.`);
+      addLogEntry('info', `Random encounter with ${selectedOpponentType} in ${currentStats.currentLocation}. Heat: ${heatInCurrentLocation}.`);
       startBattle(selectedOpponentType);
     }
 
-    // Rank update (only if not in battle and game not over)
+    // Check for game over *before* rank up if health is 0 but battle wasn't active (e.g. event damage)
+    if (currentStats.health <= 0 && !gameState.isBattleActive) {
+      setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, battleMessage: "Succumbed to injuries or events." }));
+      toast({ title: "Game Over", description: "You succumbed to your fate.", variant: "destructive" });
+      addLogEntry('game_over', 'Player health reached 0 outside of active battle.');
+      return;
+    }
+
     if (!gameState.isBattleActive && currentStats.health > 0) {
       const oldRank = currentStats.rank;
       if (currentStats.cash > 50000 && currentStats.rank !== 'Kingpin') currentStats.rank = 'Kingpin';
@@ -462,7 +572,7 @@ export function useGameLogic() {
       if (currentStats.rank !== oldRank) { toast({title: "Rank Up!", description: `Promoted to ${currentStats.rank}!`}); addLogEntry('rank_up', `Promoted to ${currentStats.rank}!`); }
     }
 
-    if (!gameState.isBattleActive) { // Final state update if not entering a battle
+    if (!gameState.isBattleActive) { 
         setGameState(prev => ({
           ...prev,
           playerStats: currentStats,
@@ -473,7 +583,7 @@ export function useGameLogic() {
           isLoadingNextDay: false,
           playerActivityInBoroughsThisDay: {}, 
         }));
-    } else { // If battle started, update stats changed before battle, but keep loading
+    } else { 
        setGameState(prev => ({
         ...prev,
         playerStats: currentStats, 
@@ -481,11 +591,10 @@ export function useGameLogic() {
         localHeadlines: newLocalHeadlines,
         activeBoroughEvents: newDailyEvents,
         boroughHeatLevels: eventProcessedHeatLevels,
-        playerActivityInBoroughsThisDay: {}, 
+        playerActivityInBoroughsThisDay: {},
       }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle, applyHeadlineImpacts]);
+  }, [gameState.playerStats, gameState.isGameOver, gameState.isBattleActive, gameState.boroughHeatLevels, gameState.activeBoroughEvents, gameState.playerActivityInBoroughsThisDay, toast, addLogEntry, startBattle, applyHeadlineImpacts, applyEventPriceModifiers]);
 
   const resetGame = useCallback(() => {
      const initialHeatLevelsReset: Record<string, number> = {};
@@ -509,3 +618,5 @@ export function useGameLogic() {
     startBattle, handlePlayerBattleAction, endBattleScreen,
   };
 }
+
+    
