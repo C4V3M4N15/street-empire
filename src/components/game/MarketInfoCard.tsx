@@ -2,6 +2,7 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
+import { ALL_DRUGS } from '@/services/market'; // Import ALL_DRUGS to access base prices
 import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -93,11 +94,12 @@ export function MarketInfoCard({
     return isNaN(val) || val < 0 ? 0 : val; // Ensure non-negative, valid number
   };
 
-  const getPriceChangeIcon = (direction?: DrugPrice['priceChangeDirection']) => {
-    if (direction === 'up') return <ArrowUpCircle className="h-3 w-3 mr-0.5 text-red-500" />;
-    if (direction === 'down') return <ArrowDownCircle className="h-3 w-3 mr-0.5 text-green-500" />;
+  const getIconRelativeToBasePrice = (currentPrice: number, basePrice: number | undefined) => {
+    if (basePrice === undefined) return <MinusCircle className="h-3 w-3 mr-0.5 text-muted-foreground" />; // Fallback if base price not found
+    if (currentPrice > basePrice) return <ArrowUpCircle className="h-3 w-3 mr-0.5 text-red-500" />;
+    if (currentPrice < basePrice) return <ArrowDownCircle className="h-3 w-3 mr-0.5 text-green-500" />;
     return <MinusCircle className="h-3 w-3 mr-0.5 text-muted-foreground" />;
-  }
+  };
 
   const renderSkeletons = () => (
     <>
@@ -165,7 +167,7 @@ export function MarketInfoCard({
                 </h3>
 
                 {marketPrices.length > 0 ? (
-                  <div className="pr-1">
+                  <div className="pr-1 max-h-80 overflow-y-auto"> {/* Adjusted height for visibility without scroll for 8 items */}
                     {marketPrices.map((drug, index) => {
                       const playerHoldings = playerStats.inventory[drug.drug]?.quantity || 0;
                       const currentQuantityInput = getNumericQuantity(drug.drug);
@@ -178,14 +180,17 @@ export function MarketInfoCard({
                       const priceChangeColor = drug.priceChangeDirection === 'up' ? 'text-red-500' :
                                                drug.priceChangeDirection === 'down' ? 'text-green-500' :
                                                'text-muted-foreground';
+                      
+                      const baseDrugInfo = ALL_DRUGS.find(d => d.name === drug.drug);
+                      const basePrice = baseDrugInfo?.basePrice;
 
                       return (
                         <React.Fragment key={drug.drug}>
                         <div className="py-1"> 
                           <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-0.5"> 
                             <div className="col-span-1 sm:col-span-1">
-                              <p className="text-sm font-medium truncate" title={drug.drug}> {/* Removed priceChangeColor from drug name */}
-                                {getPriceChangeIcon(drug.priceChangeDirection)}
+                              <p className="text-sm font-medium truncate" title={drug.drug}> {/* Drug name color is default */}
+                                {getIconRelativeToBasePrice(drug.price, basePrice)} {/* Icon based on current vs base */}
                                 {drug.drug}
                               </p>
                               <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
@@ -196,7 +201,7 @@ export function MarketInfoCard({
                                 </span>
                               </div>
                             </div>
-                            <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p> {/* Kept priceChangeColor for price */}
+                            <p className={cn("text-sm font-semibold text-right sm:text-center", priceChangeColor)}>${drug.price.toLocaleString()}</p> {/* Price color based on daily change */}
                             <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
                               <Input
                                 type="number"
@@ -248,27 +253,29 @@ export function MarketInfoCard({
                 ) : (
                   <p className="text-xs text-muted-foreground py-3">No price data available for {playerStats.currentLocation}.</p>
                 )}
-
-                <h3 className="text-md font-semibold mt-4 mb-1.5 flex items-center">
-                  <Newspaper className="mr-2 h-4 w-4 text-accent" /> News & Events ({playerStats.currentLocation})
-                </h3>
-                <div className="max-h-36 overflow-y-auto pr-1 space-y-0.5">
-                  {currentEventInLocation ? (
-                      <HeadlineItem
-                        headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`}
-                        isEvent={true}
-                      />
-                  ) : (
-                     <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
-                  )}
-                  {localHeadlines.length > 0 ? (
-                    localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} />)
-                  ) : (
-                     <p className="text-xs text-muted-foreground italic py-1">No local news updates.</p>
-                  )}
-                   {localHeadlines.length === 0 && !currentEventInLocation && (
-                     <p className="text-xs text-muted-foreground py-3">All quiet on the streets of {playerStats.currentLocation} today.</p>
-                   )}
+                
+                <div className="mt-2"> {/* Container for News & Events to match height */}
+                    <h3 className="text-md font-semibold mt-4 mb-1.5 flex items-center">
+                    <Newspaper className="mr-2 h-4 w-4 text-accent" /> News & Events ({playerStats.currentLocation})
+                    </h3>
+                    <div className="max-h-36 overflow-y-auto pr-1 space-y-0.5">
+                    {currentEventInLocation ? (
+                        <HeadlineItem
+                            headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`}
+                            isEvent={true}
+                        />
+                    ) : (
+                        <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
+                    )}
+                    {localHeadlines.length > 0 ? (
+                        localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} />)
+                    ) : (
+                        <p className="text-xs text-muted-foreground italic py-1">No local news updates.</p>
+                    )}
+                    {localHeadlines.length === 0 && !currentEventInLocation && (
+                        <p className="text-xs text-muted-foreground py-3">All quiet on the streets of {playerStats.currentLocation} today.</p>
+                    )}
+                    </div>
                 </div>
 
               </div>
