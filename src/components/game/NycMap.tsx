@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+// Removed Image import: import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LocalHeadline } from '@/services/market';
@@ -16,11 +16,17 @@ interface NycMapProps {
 }
 
 const boroughs = [
-  { name: 'Manhattan', top: '30%', left: '45%', width: '15%', height: '40%' },
-  { name: 'Brooklyn', top: '55%', left: '55%', width: '20%', height: '30%' },
-  { name: 'Queens', top: '40%', left: '70%', width: '25%', height: '45%' },
-  { name: 'The Bronx', top: '10%', left: '50%', width: '25%', height: '25%' },
-  { name: 'Staten Island', top: '70%', left: '20%', width: '20%', height: '25%' },
+  // Coordinates adjusted for a rough NYC layout representation
+  // Manhattan: Long, relatively narrow, slightly east of center.
+  { name: 'Manhattan', top: '20%', left: '45%', width: '10%', height: '60%' },
+  // Brooklyn: South-east of Manhattan, fairly large.
+  { name: 'Brooklyn', top: '55%', left: '52%', width: '22%', height: '30%' },
+  // Queens: East of Brooklyn & Manhattan, largest area.
+  { name: 'Queens', top: '35%', left: '68%', width: '30%', height: '50%' },
+  // The Bronx: North/North-east of Manhattan.
+  { name: 'The Bronx', top: '5%', left: '50%', width: '25%', height: '25%' },
+  // Staten Island: South-west of Manhattan, more isolated.
+  { name: 'Staten Island', top: '65%', left: '25%', width: '18%', height: '25%' },
 ];
 
 const HeadlineItem: React.FC<{ headline: LocalHeadline }> = ({ headline }) => {
@@ -47,7 +53,7 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
   const handleMouseEnter = useCallback(async (boroughName: string) => {
     setHoveredBorough(boroughName);
     if (boroughName === currentLocation) {
-        setHeadlines([]); // Don't fetch for current location immediately or show stale
+        setHeadlines([]); 
         return;
     }
     setIsLoadingHeadlines(true);
@@ -76,20 +82,13 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
   return (
     <div className="space-y-4">
       <div className="relative w-full aspect-[4/3] bg-muted rounded-md overflow-hidden shadow-lg">
-        <Image
-          src="https://picsum.photos/seed/nycmap/800/600"
-          alt="Stylized Map of New York City"
-          layout="fill"
-          objectFit="cover"
-          data-ai-hint="stylized map New York City"
-          className="opacity-70"
-        />
+        {/* Removed Image component. The div itself is the map canvas. */}
         {boroughs.map((borough) => (
           <button
             key={borough.name}
-            className={`absolute p-2 border-2 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring
+            className={`absolute p-1 sm:p-2 border-2 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring
               ${currentLocation === borough.name 
-                ? 'bg-accent/80 border-accent text-accent-foreground shadow-xl' 
+                ? 'bg-accent/90 border-accent text-accent-foreground shadow-xl z-10' 
                 : 'bg-card/70 border-card hover:bg-primary/70 hover:border-primary'}
             `}
             style={{ top: borough.top, left: borough.left, width: borough.width, height: borough.height }}
@@ -99,8 +98,8 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
             disabled={isGameLoading || currentLocation === borough.name}
             aria-label={`Travel to ${borough.name}`}
           >
-            <span className="text-xs sm:text-sm font-semibold">{borough.name}</span>
-            {currentLocation === borough.name && <Pin className="absolute top-1 right-1 h-4 w-4" />}
+            <span className="text-[10px] sm:text-xs font-semibold">{borough.name}</span>
+            {currentLocation === borough.name && <Pin className="absolute top-1 right-1 h-3 w-3 sm:h-4 sm:w-4" />}
           </button>
         ))}
       </div>
@@ -123,7 +122,7 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
             </div>
           </ScrollArea>
         ) : hoveredBorough && hoveredBorough !== currentLocation ? (
-          <p className="text-xs text-muted-foreground">No specific headlines for {hoveredBorough} right now, or already there.</p>
+          <p className="text-xs text-muted-foreground">No specific headlines for {hoveredBorough} right now.</p>
         ) : hoveredBorough && hoveredBorough === currentLocation ? (
              <div className="flex items-center text-sm text-accent">
                 <CheckCircle className="h-4 w-4 mr-2"/> You are currently in {currentLocation}.
