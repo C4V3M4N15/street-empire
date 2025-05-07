@@ -28,22 +28,21 @@ export interface LocalHeadline {
 }
 
 const ALL_DRUGS = [
-  { name: 'Weed', basePrice: 250, volatility: 0.3 }, // Adjusted base price
-  { name: 'Cocaine', basePrice: 12000, volatility: 0.5 }, // Adjusted base price
-  { name: 'Heroin', basePrice: 8000, volatility: 0.45 }, // Adjusted base price
-  { name: 'MDMA', basePrice: 1300, volatility: 0.35 }, // Adjusted base price
-  { name: 'LSD', basePrice: 700, volatility: 0.4 }, // Adjusted base price
-  { name: 'Meth', basePrice: 4000, volatility: 0.55 }, // Adjusted base price
-  { name: 'Mushrooms', basePrice: 400, volatility: 0.3 }, // Adjusted base price
-  { name: 'Opium', basePrice: 4500, volatility: 0.4 }, // Adjusted base price
-  { name: 'Ketamine', basePrice: 1800, volatility: 0.38 }, // Adjusted base price
-  { name: 'PCP', basePrice: 1000, volatility: 0.42 }, // Adjusted base price
-  { name: 'Xanax', basePrice: 40, volatility: 0.25 }, // Adjusted base price
-  { name: 'Valium', basePrice: 30, volatility: 0.2 }, // Adjusted base price
-  { name: 'Steroids', basePrice: 250, volatility: 0.3 }, // Adjusted base price
-  { name: 'Fentanyl', basePrice: 14000, volatility: 0.6 }, // Adjusted base price
-  { name: 'Crack', basePrice: 800, volatility: 0.5 }, // Adjusted base price
-  // Adding more drugs
+  { name: 'Weed', basePrice: 250, volatility: 0.3 },
+  { name: 'Cocaine', basePrice: 12000, volatility: 0.5 },
+  { name: 'Heroin', basePrice: 8000, volatility: 0.45 },
+  { name: 'MDMA', basePrice: 1300, volatility: 0.35 },
+  { name: 'LSD', basePrice: 700, volatility: 0.4 },
+  { name: 'Meth', basePrice: 4000, volatility: 0.55 },
+  { name: 'Mushrooms', basePrice: 400, volatility: 0.3 },
+  { name: 'Opium', basePrice: 4500, volatility: 0.4 },
+  { name: 'Ketamine', basePrice: 1800, volatility: 0.38 },
+  { name: 'PCP', basePrice: 1000, volatility: 0.42 },
+  { name: 'Xanax', basePrice: 40, volatility: 0.25 },
+  { name: 'Valium', basePrice: 30, volatility: 0.2 },
+  { name: 'Steroids', basePrice: 250, volatility: 0.3 },
+  { name: 'Fentanyl', basePrice: 14000, volatility: 0.6 },
+  { name: 'Crack', basePrice: 800, volatility: 0.5 },
   { name: 'Spice', basePrice: 150, volatility: 0.35 },
   { name: 'GHB', basePrice: 600, volatility: 0.4 },
   { name: 'Rohypnol', basePrice: 200, volatility: 0.3 },
@@ -77,6 +76,18 @@ const ALL_HEADLINES = [
 
 
 /**
+ * Generates a random number from a standard normal distribution (mean 0, standard deviation 1).
+ * Uses the Box-Muller transform.
+ * @returns A normally distributed random number.
+ */
+function gaussianRandom() {
+  let u = 0, v = 0;
+  while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+  while(v === 0) v = Math.random();
+  return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+}
+
+/**
  * Asynchronously retrieves the current market prices for drugs.
  * @param location The current location of the player (e.g., "Manhattan", "Brooklyn")
  * @returns A promise that resolves to an array of DrugPrice objects.
@@ -86,12 +97,16 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
   await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
 
   // Determine number of drugs to show (e.g., 7 to 12)
-  const numDrugsToShow = 7 + Math.floor(Math.random() * 6);
+  const numDrugsToShow = 10 + Math.floor(Math.random() * 6); // Increased to 10-15 drugs
   const shuffledDrugs = [...ALL_DRUGS].sort(() => 0.5 - Math.random());
   const selectedDrugs = shuffledDrugs.slice(0, numDrugsToShow);
 
   return selectedDrugs.map(drug => {
-    const priceFluctuation = (Math.random() - 0.5) * 2 * drug.volatility; // -volatility to +volatility
+    // Generate a random fluctuation using a Gaussian-like distribution
+    // Summing 3 uniform randoms and normalizing approximates a bell curve centered at 0, range roughly -1 to 1.
+    const gaussianApproximation = ((Math.random() + Math.random() + Math.random()) / 3 - 0.5) * 2;
+    const priceFluctuation = gaussianApproximation * drug.volatility;
+    
     let price = drug.basePrice * (1 + priceFluctuation);
     
     // Add location-based modifier for NYC boroughs
@@ -140,13 +155,9 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
       headlineText = headlineText.replace("{drug}", randomDrug);
     }
     
-    // Category-specific impacts are handled by applyHeadlineImpacts in useGameLogic by checking drug names against categories
-    // Here, we just pass the headline and its general impact factor.
-    // A more advanced system could make priceImpact an object like: { general: 0.1, categoryX: 0.2, drugY: -0.1 }
-
     headlines.push({
       headline: headlineText,
-      priceImpact: priceImpact, // The applyHeadlineImpacts function will use this
+      priceImpact: priceImpact, 
     });
   }
 
