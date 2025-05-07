@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
@@ -6,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone } from 'lucide-react'; // Added Megaphone
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap } from 'lucide-react'; // Added Megaphone, Zap
 import type { PlayerStats, GameState } from '@/types/game'; // Import GameState for activeBoroughEvents
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NycMap } from './NycMap';
+import { cn } from '@/lib/utils'; // For conditional classnames
 
 interface MarketInfoCardProps {
   marketPrices: DrugPrice[];
@@ -31,17 +33,18 @@ interface MarketInfoCardProps {
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
 
-const HeadlineItem: React.FC<{ headline: string; impact: number }> = ({ headline, impact }) => {
-  const impactColor = impact > 0 ? 'text-accent' : impact < 0 ? 'text-destructive' : 'text-muted-foreground';
-  const ImpactIcon = impact > 0 ? TrendingUp : impact < 0 ? AlertTriangle : TrendingUp;
+const HeadlineItem: React.FC<{ headline: string; impact?: number; type?: string; isEvent?: boolean }> = ({ headline, impact, type, isEvent }) => {
+  const impactColor = impact && impact !== 1 ? (impact > 1 ? 'text-accent' : 'text-destructive') : 'text-muted-foreground';
+  const ImpactIcon = impact && impact !== 1 ? (impact > 1 ? TrendingUp : AlertTriangle) : (isEvent ? Megaphone : Newspaper);
+  const impactText = impact && impact !== 1 ? `Impact: x${impact.toFixed(2)}` : null;
+  
   return (
-    <div className="flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0">
-      <ImpactIcon className={`h-4 w-4 mt-0.5 shrink-0 ${impactColor}`} />
+    <div className={cn("flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0", isEvent && "bg-yellow-500/10 border-yellow-500/50 rounded-sm px-2")}>
+      <ImpactIcon className={cn("h-4 w-4 mt-0.5 shrink-0", isEvent ? "text-yellow-300" : impactColor)} />
       <div>
-        <p className="text-xs">{headline}</p>
-        <p className={`text-xs font-medium ${impactColor}`}>
-          Impact: {impact > 0 ? '+' : ''}{(impact * 100).toFixed(0)}%
-        </p>
+        <p className={cn("text-xs", isEvent && "text-yellow-200 font-semibold")}>{headline}</p>
+        {type && <p className="text-xs text-muted-foreground/80">Type: {type}</p>}
+        {impactText && <p className={`text-xs font-medium ${impactColor}`}>{impactText}</p>}
       </div>
     </div>
   );
@@ -147,12 +150,7 @@ export function MarketInfoCard({
                 <h3 className="text-md font-semibold mb-2 flex items-center">
                   <DollarSign className="mr-2 h-4 w-4 text-accent" /> Drug Prices & Inventory ({playerStats.currentLocation})
                 </h3>
-                {currentEventInLocation && (
-                    <div className="mb-2 p-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 text-yellow-300 text-xs flex items-center">
-                        <Megaphone className="h-4 w-4 mr-2 shrink-0" />
-                        <span><strong>Active Event:</strong> {currentEventInLocation.name} - <em>{currentEventInLocation.description}</em></span>
-                    </div>
-                )}
+                
                 {marketPrices.length > 0 ? (
                   <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
                     {marketPrices.map((drug, index) => {
@@ -227,15 +225,29 @@ export function MarketInfoCard({
                 )}
 
                 <h3 className="text-md font-semibold mt-4 mb-1.5 flex items-center">
-                  <Newspaper className="mr-2 h-4 w-4 text-accent" /> Local Headlines ({playerStats.currentLocation})
+                  <Newspaper className="mr-2 h-4 w-4 text-accent" /> News & Events ({playerStats.currentLocation})
                 </h3>
-                {localHeadlines.length > 0 ? (
-                  <div className="max-h-28 overflow-y-auto pr-1 space-y-0.5">
-                    {localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} impact={headline.priceImpact} />)}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No local headlines in {playerStats.currentLocation} today.</p>
-                )}
+                <div className="max-h-36 overflow-y-auto pr-1 space-y-0.5">
+                  {currentEventInLocation ? (
+                      <HeadlineItem 
+                        headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`} 
+                        type={currentEventInLocation.type}
+                        isEvent={true}
+                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined} // crude way to show some impact
+                      />
+                  ) : (
+                     <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
+                  )}
+                  {localHeadlines.length > 0 ? (
+                    localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} impact={1 + headline.priceImpact} />)
+                  ) : (
+                     <p className="text-xs text-muted-foreground italic py-1">No local news updates.</p>
+                  )}
+                   {localHeadlines.length === 0 && !currentEventInLocation && (
+                     <p className="text-xs text-muted-foreground py-3">All quiet on the streets of {playerStats.currentLocation} today.</p>
+                   )}
+                </div>
+
               </div>
             )}
           </CardContent>

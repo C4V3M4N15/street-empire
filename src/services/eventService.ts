@@ -1,9 +1,10 @@
-import type { GameEvent } from '@/types/events';
+
+import type { GameEvent, EventType } from '@/types/events';
 
 // These should match the locations defined in useGameLogic or a shared constants file.
 export const NYC_BOROUGHS_EVENTS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"];
 
-// Define drug categories for event effects
+// Define drug categories for event effects (if still needed for some complex events)
 // These names should match drug names in market.ts
 export const drugCategories = {
   all: [], // Populated dynamically below
@@ -15,8 +16,6 @@ export const drugCategories = {
   cheap: ['Weed', 'Spice', 'Xanax', 'Valium', 'Poppers (Amyl Nitrite)'],
   expensive: ['Cocaine', 'Heroin', 'Fentanyl', 'DMT', 'OxyContin', 'Meth'],
 };
-// Placeholder for all drug names - ideally get this from market.ts ALL_DRUGS
-// For now, let's list them manually to avoid circular deps or complex loading.
 const allDrugNamesForCategory = [
     'Weed', 'Cocaine', 'Heroin', 'MDMA', 'LSD', 'Meth', 'Mushrooms', 'Opium', 'Ketamine',
     'PCP', 'Xanax', 'Valium', 'Steroids', 'Fentanyl', 'Crack', 'Spice', 'GHB',
@@ -27,123 +26,183 @@ drugCategories.all = allDrugNamesForCategory;
 
 
 // --- Event Pools ---
-// Generic events that can happen in any borough
 const genericEvents: GameEvent[] = [
   {
-    id: 'generic_increased_patrols',
-    name: 'Increased Patrols',
-    description: 'Police presence seems higher than usual across the city today.',
-    effects: { heatChange: 5, categoryPriceModifiers: [{ category: drugCategories.cheap, factor: 1.05 }] }
+    id: 'generic_light_rain',
+    name: 'Light Rain',
+    text: 'Light rain falls over the city, making streets slick.',
+    type: 'weather',
+    description: 'A light drizzle is making the rounds. Not much impact, but the city looks grimier.',
+    effects: { heatChange: 0, priceModifier: { 'Weed': 1.02 } } // Slightly up for staying in
   },
   {
-    id: 'generic_supply_rumor_good',
-    name: 'Supply Rumor (Good)',
-    description: 'Word on the street is a big shipment made it through. Prices might dip.',
-    effects: { categoryPriceModifiers: [{ category: drugCategories.all, factor: 0.95 }], heatChange: -2 }
+    id: 'generic_economic_uptick',
+    name: 'Economic Uptick',
+    text: 'Positive economic news has people spending a bit more freely.',
+    type: 'economy',
+    description: 'Good times are rolling, or so they say. More cash flowing around.',
+    effects: { heatChange: 0, priceModifier: { 'Cocaine': 1.05, 'MDMA': 1.03 } }
   },
-  {
-    id: 'generic_supply_rumor_bad',
-    name: 'Supply Rumor (Bad)',
-    description: 'Chatter about a major bust has sellers spooked. Prices could climb.',
-    effects: { categoryPriceModifiers: [{ category: drugCategories.all, factor: 1.05 }], heatChange: 3 }
-  },
-  {
-    id: 'generic_undercover_op',
-    name: 'Undercover Operation',
-    description: "There's a buzz about undercover cops working the streets. Everyone's on edge.",
+   {
+    id: 'generic_undercover_op_rumor',
+    name: 'Undercover Op Rumor',
+    text: "Whispers of undercover cops are making dealers nervous city-wide.",
+    type: 'police',
+    description: "There's a buzz about plainclothes officers. Everyone's a bit more cautious.",
     effects: {
-        heatChange: 10,
-        playerImpact: {
-            message: "Be extra careful, word is plainclothes officers are active in this area.",
-            // No direct combat, but heat increases risk
-        }
+        heatChange: 1, // Slight general heat increase
+        priceModifier: { 'Heroin': 1.03, 'Meth': 1.03 } // Risk premium
     }
   }
 ];
 
 const manhattanEvents: GameEvent[] = [
   {
-    id: 'manhattan_wallstreet_raid',
-    name: 'Wall Street Raid',
-    description: 'Reports of a major police raid targeting high-profile clients in the Financial District.',
+    id: 'manhattan_wallstreet_raid_major',
+    name: 'Major Wall Street Raid',
+    text: 'SWAT teams hit multiple financial institutions in a massive crackdown on white-collar drug use.',
+    type: 'police',
+    description: 'The Financial District is crawling with feds. High-end drugs are risky business.',
     effects: {
-      drugPriceModifiers: [{ drugName: 'Cocaine', factor: 1.25 }, { drugName: 'Adderall', factor: 1.15 }],
-      heatChange: 15,
-      playerImpact: { message: 'Cops are hitting hard in the Financial District today!' }
+      priceModifier: { 'Cocaine': 1.30, 'Adderall': 1.20, 'OxyContin': 1.15 },
+      heatChange: 2, // Significant heat increase specific to this event
     }
   },
   {
-    id: 'manhattan_fashion_week_demand',
-    name: 'Fashion Week Demand',
-    description: "It's Fashion Week! Demand for party drugs and stimulants is through the roof in Manhattan.",
+    id: 'manhattan_celebrity_party_overdose',
+    name: 'Celebrity Overdose Scandal',
+    text: 'A-list celebrity overdose at a SoHo party. Media frenzy ensues.',
+    type: 'celebrity',
+    description: 'Paparazzi are everywhere after a celebrity OD. Party drugs are under scrutiny.',
     effects: {
-      categoryPriceModifiers: [{ category: drugCategories.party, factor: 1.20 }, { category: drugCategories.stimulants, factor: 1.15 }],
-      heatChange: 5
+      priceModifier: { 'MDMA': 0.9, 'Ketamine': 0.92, 'LSD': 1.1 }, // Some down due to bad press, LSD up for 'spiritual' alternatives
+      heatChange: 1,
+    }
+  },
+  {
+    id: 'manhattan_un_summit_security',
+    name: 'UN Summit Security',
+    text: 'Midtown locked down for a UN summit. Police presence is overwhelming.',
+    type: 'civil',
+    description: 'Good luck moving anything through Midtown with this level of security for the UN summit.',
+    effects: {
+        heatChange: 2,
+        priceModifier: { 'Weed': 1.1, 'Cocaine': 1.15, 'Heroin': 1.12 } // Harder to move anything
     }
   }
 ];
 
 const brooklynEvents: GameEvent[] = [
   {
-    id: 'brooklyn_warehouse_bust',
-    name: 'Warehouse Bust in BK',
-    description: 'A significant drug warehouse was reportedly busted in Brooklyn, affecting various supplies.',
+    id: 'brooklyn_warehouse_fire',
+    name: 'Warehouse Fire in Bushwick',
+    text: 'Massive warehouse fire in Bushwick destroys suspected drug lab. Certain supplies affected.',
+    type: 'civil',
+    description: 'A huge fire in Bushwick is making headlines. Rumor has it a major lab went up.',
     effects: {
-      categoryPriceModifiers: [{ category: ['Weed', 'MDMA', 'Mushrooms'], factor: 1.18 }],
-      heatChange: 12
+      priceModifier: { 'Meth': 1.25, 'Spice': 1.20, 'MDMA': 1.15 },
+      heatChange: 1,
     }
   },
   {
-    id: 'brooklyn_block_party',
-    name: 'Brooklyn Block Party',
-    description: 'A massive block party is underway, increasing demand for recreational substances.',
+    id: 'brooklyn_hipster_festival',
+    name: 'Hipster Music Festival',
+    text: 'Williamsburg overrun by a massive indie music festival. Demand for "boutique" drugs spikes.',
+    type: 'civil',
+    description: 'Thousands of hipsters in Williamsburg for a music fest. They want the good stuff.',
     effects: {
-        categoryPriceModifiers: [{category: drugCategories.party, factor: 1.15}, {drugName: 'Weed', factor: 1.10}],
-        heatChange: -3, // Parties might distract police short-term
-        playerImpact: {
-            message: "There's a wild block party nearby. Good opportunity for sales, but could get chaotic.",
-        }
+        priceModifier: { 'Weed': 1.15, 'Mushrooms': 1.20, 'LSD': 1.18, 'Ketamine': 1.10 },
+        heatChange: -1, // Police busy with crowd control
+    }
+  },
+  {
+    id: 'brooklyn_gang_truce_meeting',
+    name: 'Gang Truce Meeting',
+    text: 'Rival Brooklyn gangs reportedly holding a truce meeting. Streets unusually quiet.',
+    type: 'gang',
+    description: 'Word is the big gangs in BK are talking peace. Might be easier to operate for a bit.',
+    effects: {
+        heatChange: -2,
+        priceModifier: { 'Crack': 0.95, 'Heroin': 0.97 } // Less territorial disputes, slightly easier supply
     }
   }
 ];
 
 const queensEvents: GameEvent[] = [
   {
-    id: 'queens_airport_seizure',
-    name: 'Airport Seizure at JFK/LGA',
-    description: 'Customs made a large seizure at one of the airports in Queens. Exotic imports might be scarce.',
+    id: 'queens_airport_security_tech',
+    name: 'New Airport Security Tech',
+    text: 'JFK and LaGuardia roll out advanced new scanners. Smuggling routes hit hard.',
+    type: 'police',
+    description: 'Getting anything through the airports in Queens just got a lot harder thanks to new tech.',
     effects: {
-      categoryPriceModifiers: [{ category: drugCategories.expensive, factor: 1.22 }],
-      heatChange: 10
+      priceModifier: { 'Cocaine': 1.20, 'Heroin': 1.18, 'Fentanyl': 1.25 }, // Affects imports
+      heatChange: 2,
+    }
+  },
+  {
+    id: 'queens_cultural_festival',
+    name: 'Large Cultural Festival',
+    text: 'A major ethnic cultural festival in Flushing draws huge crowds. Specific demands up.',
+    type: 'civil',
+    description: 'Flushing is packed for a cultural fest. Some niche markets are buzzing.',
+    effects: {
+        priceModifier: { 'Opium': 1.15, 'Ketamine': 1.10 }, // Example niche demands
+        heatChange: 0,
     }
   }
 ];
 
 const bronxEvents: GameEvent[] = [
   {
-    id: 'bronx_gang_turf_war',
-    name: 'Gang Turf War Intensifies',
-    description: 'Rival gangs are clashing openly in parts of The Bronx. It\'s dangerous, but some goods are moving cheap.',
+    id: 'bronx_gang_leader_arrested',
+    name: 'Major Gang Leader Arrested',
+    text: 'High-profile Bronx gang leader busted in a pre-dawn raid. Power vacuum emerging.',
+    type: 'gang',
+    description: 'The arrest of a top gang figure in The Bronx has thrown the underworld into chaos.',
     effects: {
-      drugPriceModifiers: [{ drugName: 'Crack', factor: 0.85 }, { drugName: 'Heroin', factor: 0.9 }],
-      heatChange: 20,
+      priceModifier: { 'Crack': 1.10, 'PCP': 1.08, 'Heroin': 1.05 }, // Disruption and infighting
+      heatChange: 1,
       playerImpact: {
-        message: 'A gang war is flaring up! Watch your back, but there might be deals if you dare.',
+        message: 'Streets in The Bronx are tense after a big arrest. Could be dangerous, could be opportunity.',
         triggerCombat: 'gang_activity'
       }
+    }
+  },
+  {
+    id: 'bronx_community_watch_boost',
+    name: 'Community Watch Expansion',
+    text: 'Several Bronx neighborhoods receive funding to expand community watch programs.',
+    type: 'civil',
+    description: 'More eyes on the street in The Bronx as community watch groups get a boost.',
+    effects: {
+        heatChange: 1,
+        priceModifier: { 'Weed': 1.05, 'Crack': 1.07 } // Harder for street-level dealing
     }
   }
 ];
 
 const statenIslandEvents: GameEvent[] = [
   {
-    id: 'staten_ferry_crackdown',
-    name: 'Ferry Terminal Crackdown',
-    description: 'Police are heavily patrolling the Staten Island Ferry terminals.',
+    id: 'staten_ferry_drug_dog_patrols',
+    name: 'Ferry Drug Dog Patrols',
+    text: 'Increased K9 units patrolling Staten Island Ferry. Smuggling significantly harder.',
+    type: 'police',
+    description: 'Drug dogs are all over the S.I. Ferry terminals. Moving anything by boat is risky.',
     effects: {
-      heatChange: 18,
-      categoryPriceModifiers: [{ category: drugCategories.all, factor: 1.08 }], // Harder to get anything in/out
-      playerImpact: { message: 'The ferry is hot today. Risky to move product.'}
+      heatChange: 2,
+      priceModifier: { 'Weed': 1.15, 'Cocaine': 1.12, 'Heroin': 1.10 } // Affects anything moved via ferry
+    }
+  },
+  {
+    id: 'staten_island_storm_surge',
+    name: 'Coastal Storm Surge',
+    text: 'Coastal storm surge warnings for Staten Island. Ferry services disrupted, some roads flooded.',
+    type: 'weather',
+    description: 'Bad weather hitting Staten Island. Transport is a mess.',
+    effects: {
+        heatChange: 0,
+        priceModifier: { 'Fentanyl': 1.08, 'Meth': 1.05 } // Harder to get specific supplies in
     }
   }
 ];
@@ -172,15 +231,27 @@ export async function getTodaysEvents(): Promise<Record<string, GameEvent | null
   for (const borough of NYC_BOROUGHS_EVENTS) {
     const pool = boroughEventPools[borough];
     if (pool && pool.length > 0) {
-      // Add a chance for NO event to occur in a borough for variety (e.g., 20% chance of no event)
-      if (Math.random() > 0.25) {
+      // Add a chance for NO event to occur in a borough for variety (e.g., 25% chance of no specific event, gets a generic one or null)
+      if (Math.random() > 0.25) { // 75% chance of a specific/generic borough event
         const randomIndex = Math.floor(Math.random() * pool.length);
         dailyEvents[borough] = pool[randomIndex];
-      } else {
-        dailyEvents[borough] = null; // No specific event for this borough today
+      } else { // 25% chance of a more generic or no event
+        // Fallback to a purely generic event if no borough-specific one is picked
+        if (genericEvents.length > 0 && Math.random() > 0.5) { // 50% of this 25% gets a generic
+             const randomIndex = Math.floor(Math.random() * genericEvents.length);
+             dailyEvents[borough] = genericEvents[randomIndex];
+        } else {
+            dailyEvents[borough] = null; // No specific event for this borough today
+        }
       }
     } else {
-      dailyEvents[borough] = null; // No event pool defined for this borough
+      // If no pool defined, try to assign a generic event or null
+      if (genericEvents.length > 0 && Math.random() > 0.3) {
+           const randomIndex = Math.floor(Math.random() * genericEvents.length);
+           dailyEvents[borough] = genericEvents[randomIndex];
+      } else {
+          dailyEvents[borough] = null;
+      }
     }
   }
   return dailyEvents;

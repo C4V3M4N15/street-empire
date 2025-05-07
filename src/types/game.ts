@@ -1,3 +1,4 @@
+
 import type { DrugPrice, LocalHeadline } from '@/services/market';
 import type { GameEvent } from '@/types/events';
 
@@ -88,5 +89,5 @@ export interface GameState {
   availableHealingItems: HealingItem[];
   activeBoroughEvents: Record<string, GameEvent | null>; // Borough name -> active event or null
   boroughHeatLevels: Record<string, number>; // Borough name -> heat level (0-5)
-  playerActivityInBoroughsThisDay: Record<string, boolean>; // Tracks if player performed illegal activity in a borough today
+  playerActivityInBoroughsThisDay: Record<string, number>; // Tracks count of illegal activities in a borough today
 }
