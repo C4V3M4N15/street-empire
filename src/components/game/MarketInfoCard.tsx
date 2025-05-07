@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, Dices, ShieldPlus, Sword, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for armor
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus } from 'lucide-react'; // Added PackagePlus
 import type { PlayerStats } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
@@ -236,97 +236,93 @@ export function MarketInfoCard({
             />
           </CardContent>
         </TabsContent>
-         <TabsContent value="shop">
-          <CardContent className="p-4 pt-3">
-            <h3 className="text-md font-semibold mb-3 flex items-center">
-              <Store className="mr-2 h-4 w-4 text-accent" /> The Git'n Place 
+         <TabsContent value="shop" className="p-0">
+           <CardContent className="p-4 pt-3">
+            <h3 className="text-lg font-semibold mb-1 flex items-center">
+              <Store className="mr-2 h-5 w-5 text-primary-foreground" /> The Git'n Place
             </h3>
+            <p className="text-xs text-muted-foreground mb-3">All your less-than-legal needs, in one shady spot.</p>
             
-            {/* Weapons Section */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <Sword className="mr-2 h-4 w-4 text-destructive" /> Weapons
-              </h4>
-              {availableWeapons.length > 0 ? (
-                <div className="space-y-2">
-                  {availableWeapons.map(weapon => (
-                    <div key={weapon.name} className="flex items-center justify-between p-2 border border-border/50 rounded-md">
-                      <div>
-                        <p className="text-sm font-medium">{weapon.name}</p>
-                        <p className="text-xs text-muted-foreground">DMG: +{weapon.damageBonus} | Cost: ${weapon.price.toLocaleString()}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => buyWeapon(weapon)}
-                        disabled={isLoading || playerStats.cash < weapon.price || (playerStats.equippedWeapon?.name === weapon.name)}
-                        className="text-xs"
-                      >
-                        {playerStats.equippedWeapon?.name === weapon.name ? 'Equipped' : 'Buy'}
-                      </Button>
+            <Tabs defaultValue="weapons" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-3">
+                    <TabsTrigger value="weapons" className="flex items-center text-xs sm:text-sm">
+                        <Sword className="mr-1 sm:mr-2 h-4 w-4" /> Weapons
+                    </TabsTrigger>
+                    <TabsTrigger value="armor" className="flex items-center text-xs sm:text-sm">
+                        <ShieldCheck className="mr-1 sm:mr-2 h-4 w-4" /> Armor
+                    </TabsTrigger>
+                    <TabsTrigger value="healing" className="flex items-center text-xs sm:text-sm">
+                        <ShieldPlus className="mr-1 sm:mr-2 h-4 w-4" /> Healing
+                    </TabsTrigger>
+                    <TabsTrigger value="capacity" className="flex items-center text-xs sm:text-sm">
+                        <PackagePlus className="mr-1 sm:mr-2 h-4 w-4" /> Upgrades
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="weapons" className="mt-0">
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {availableWeapons.length > 0 ? (
+                        availableWeapons.map(weapon => (
+                          <div key={weapon.name} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                            <div>
+                              <p className="text-sm font-medium">{weapon.name}</p>
+                              <p className="text-xs text-muted-foreground">DMG: +{weapon.damageBonus} | Cost: ${weapon.price.toLocaleString()}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => buyWeapon(weapon)}
+                              disabled={isLoading || playerStats.cash < weapon.price || (playerStats.equippedWeapon?.name === weapon.name)}
+                              className="text-xs px-3"
+                            >
+                              {playerStats.equippedWeapon?.name === weapon.name ? 'Equipped' : 'Buy'}
+                            </Button>
+                          </div>
+                        ))
+                      ) : (
+                         <p className="text-xs text-muted-foreground py-3 text-center">No weapons currently in stock.</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                 <p className="text-xs text-muted-foreground py-2">No weapons currently in stock.</p>
-              )}
-            </div>
-            
-            <Separator className="my-4" />
+                </TabsContent>
 
-            {/* Armor Section */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <ShieldCheck className="mr-2 h-4 w-4 text-blue-500" /> Armor
-              </h4>
-              {availableArmor.length > 0 ? (
-                <div className="space-y-2">
-                  {availableArmor.map(armor => (
-                    <div key={armor.name} className="flex items-center justify-between p-2 border border-border/50 rounded-md">
-                      <div>
-                        <p className="text-sm font-medium">{armor.name}</p>
-                        <p className="text-xs text-muted-foreground">DEF: +{armor.protectionBonus} | Cost: ${armor.price.toLocaleString()}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => buyArmor(armor)}
-                        disabled={isLoading || playerStats.cash < armor.price || (playerStats.equippedArmor?.name === armor.name)}
-                        className="text-xs"
-                      >
-                        {playerStats.equippedArmor?.name === armor.name ? 'Equipped' : 'Buy'}
-                      </Button>
+                <TabsContent value="armor" className="mt-0">
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {availableArmor.length > 0 ? (
+                        availableArmor.map(armor => (
+                          <div key={armor.name} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                            <div>
+                              <p className="text-sm font-medium">{armor.name}</p>
+                              <p className="text-xs text-muted-foreground">DEF: +{armor.protectionBonus} | Cost: ${armor.price.toLocaleString()}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => buyArmor(armor)}
+                              disabled={isLoading || playerStats.cash < armor.price || (playerStats.equippedArmor?.name === armor.name)}
+                              className="text-xs px-3"
+                            >
+                              {playerStats.equippedArmor?.name === armor.name ? 'Equipped' : 'Buy'}
+                            </Button>
+                          </div>
+                        ))
+                      ) : (
+                         <p className="text-xs text-muted-foreground py-3 text-center">No armor currently in stock.</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                 <p className="text-xs text-muted-foreground py-2">No armor currently in stock.</p>
-              )}
-            </div>
+                </TabsContent>
 
-            <Separator className="my-4" />
+                <TabsContent value="healing" className="mt-0">
+                    <p className="text-xs text-muted-foreground py-3 text-center">Healing items coming soon!</p>
+                </TabsContent>
 
-            {/* Healing Items Section - Placeholder */}
-            <div  className="mb-4">
-              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <ShieldPlus className="mr-2 h-4 w-4 text-green-500" /> Healing Items
-              </h4>
-               <p className="text-xs text-muted-foreground py-2">Healing items coming soon!</p>
-            </div>
-
-            <Separator className="my-4" />
-            
-            {/* Capacity Upgrades Section - Placeholder */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2 flex items-center text-primary-foreground">
-                <Dices className="mr-2 h-4 w-4 text-purple-500" /> Capacity Upgrades
-              </h4>
-              <p className="text-xs text-muted-foreground py-2">Storage capacity upgrades coming soon!</p>
-            </div>
-
+                <TabsContent value="capacity" className="mt-0">
+                    <p className="text-xs text-muted-foreground py-3 text-center">Storage capacity upgrades coming soon!</p>
+                </TabsContent>
+            </Tabs>
           </CardContent>
         </TabsContent>
       </Tabs>
     </Card>
   );
 }
+
