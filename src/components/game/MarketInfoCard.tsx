@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info } from 'lucide-react'; // Added Info, Megaphone, Zap
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info, Percent } from 'lucide-react'; // Added Info, Megaphone, Zap, Percent
 import type { PlayerStats, GameState } from '@/types/game';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NycMap } from './NycMap';
-import { ReferencePanel } from './ReferencePanel'; // Import ReferencePanel
+import { ReferencePanel } from './ReferencePanel';
 import { cn } from '@/lib/utils';
 
 interface MarketInfoCardProps {
@@ -36,18 +36,15 @@ interface MarketInfoCardProps {
   fetchHeadlinesForLocation: (location: string) => Promise<LocalHeadline[]>;
 }
 
-const HeadlineItem: React.FC<{ headline: string; impact?: number; type?: string; isEvent?: boolean }> = ({ headline, impact, type, isEvent }) => {
-  const impactColor = impact && impact !== 1 ? (impact > 1 ? 'text-accent' : 'text-destructive') : 'text-muted-foreground';
-  const ImpactIcon = impact && impact !== 1 ? (impact > 1 ? TrendingUp : AlertTriangle) : (isEvent ? Megaphone : Newspaper);
-  const impactText = impact && impact !== 1 ? `Impact: x${impact.toFixed(2)}` : null;
+const HeadlineItem: React.FC<{ headline: string; isEvent?: boolean }> = ({ headline, isEvent }) => {
+  const IconToUse = isEvent ? Megaphone : Newspaper;
+  const iconColor = isEvent ? 'text-yellow-400' : 'text-muted-foreground';
 
   return (
     <div className={cn("flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0", isEvent && "bg-yellow-500/10 border-yellow-500/50 rounded-sm px-2")}>
-      <ImpactIcon className={cn("h-4 w-4 mt-0.5 shrink-0", isEvent ? "text-yellow-300" : impactColor)} />
+      <IconToUse className={cn("h-4 w-4 mt-0.5 shrink-0", iconColor)} />
       <div>
         <p className={cn("text-xs", isEvent && "text-yellow-200 font-semibold")}>{headline}</p>
-        {type && <p className="text-xs text-muted-foreground/80">Type: {type}</p>}
-        {impactText && <p className={`text-xs font-medium ${impactColor}`}>{impactText}</p>}
       </div>
     </div>
   );
@@ -128,7 +125,7 @@ export function MarketInfoCard({
     <Card className="shadow-md">
       <Tabs defaultValue="market" className="w-full">
         <CardHeader className="pb-0 pt-4 px-4">
-            <TabsList className="grid w-full grid-cols-4"> {/* Changed to grid-cols-4 */}
+            <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="market" className="flex items-center">
                     <LineChart className="mr-2 h-4 w-4" /> Market
                 </TabsTrigger>
@@ -138,7 +135,7 @@ export function MarketInfoCard({
                 <TabsTrigger value="shop" className="flex items-center">
                     <Store className="mr-2 h-4 w-4" /> The Git'n Place
                 </TabsTrigger>
-                <TabsTrigger value="reference" className="flex items-center"> {/* New Reference Tab */}
+                <TabsTrigger value="reference" className="flex items-center">
                     <Info className="mr-2 h-4 w-4" /> Reference
                 </TabsTrigger>
             </TabsList>
@@ -177,6 +174,10 @@ export function MarketInfoCard({
                             <div className="col-span-1 sm:col-span-1">
                               <p className="text-sm font-medium truncate" title={drug.drug}>{drug.drug}</p>
                               <p className="text-xs text-muted-foreground">Have: {playerHoldings.toLocaleString()}</p>
+                               <p className="text-xs text-muted-foreground flex items-center">
+                                <Percent className="h-3 w-3 mr-0.5 text-blue-400" />
+                                Volatility: {typeof drug.volatility === 'number' ? `${(drug.volatility * 100).toFixed(0)}%` : 'N/A'}
+                              </p>
                             </div>
                             <p className="text-sm font-semibold text-accent text-right sm:text-center">${drug.price.toLocaleString()}</p>
                             <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
@@ -239,15 +240,13 @@ export function MarketInfoCard({
                   {currentEventInLocation ? (
                       <HeadlineItem
                         headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`}
-                        type={currentEventInLocation.type}
                         isEvent={true}
-                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined}
                       />
                   ) : (
                      <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
                   )}
                   {localHeadlines.length > 0 ? (
-                    localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} impact={1 + headline.priceImpact} />)
+                    localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} />)
                   ) : (
                      <p className="text-xs text-muted-foreground italic py-1">No local news updates.</p>
                   )}
@@ -401,7 +400,7 @@ export function MarketInfoCard({
             </Tabs>
           </CardContent>
         </TabsContent>
-        <TabsContent value="reference" className="p-0"> {/* New Reference Tab Content */}
+        <TabsContent value="reference" className="p-0">
           <CardContent className="p-4 pt-3">
             <ReferencePanel />
           </CardContent>

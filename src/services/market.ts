@@ -1,3 +1,4 @@
+
 /**
  * Represents a drug and its associated price.
  */
@@ -10,6 +11,10 @@ export interface DrugPrice {
    * The price of the drug.
    */
   price: number;
+  /**
+   * The base volatility of the drug.
+   */
+  volatility?: number;
 }
 
 /**
@@ -36,7 +41,7 @@ export interface LocalHeadline {
   affectedCategories?: string[];
 }
 
-export const ALL_DRUGS = [ // Exported ALL_DRUGS
+export const ALL_DRUGS = [
   { name: 'Weed', basePrice: 20, volatility: 0.15 },
   { name: 'Cocaine', basePrice: 150, volatility: 0.25 },
   { name: 'Heroin', basePrice: 120, volatility: 0.22 },
@@ -71,22 +76,22 @@ const ALL_HEADLINES: Array<{
   impactFactor: number;
   positive: boolean;
 }> = [
-  { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
-  { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
-  { text: "New synthetic {drug} floods {location}'s market. Prices plummet!", impactDrugSpecific: true, impactFactor: -0.4, positive: false },
-  { text: "Celebrity overdoses on {drug} in a Manhattan penthouse. Public outcry!", impactDrugSpecific: true, impactFactor: -0.2, positive: false },
-  { text: "Economic boom in NYC! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
-  { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
-  { text: "Music festival in Brooklyn! Demand for party drugs up.", impactDrugSpecific: false, impactCategory: ['party'], impactFactor: 0.25, positive: true },
-  { text: "Wall Street traders seek focus enhancers. Demand high in Manhattan.", impactDrugSpecific: false, impactCategory: ['stimulants', 'prescription'], impactFactor: 0.18, positive: true },
-  { text: "Increased patrols on bridges and tunnels. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.2, positive: true },
-  { text: "New city legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.15, positive: false },
-  { text: "Rival gang war in The Bronx disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.1, positive: true },
-  { text: "Health crisis in Queens leads to crackdown on opioids.", impactDrugSpecific: false, impactCategory: ['opioids'], impactFactor: 0.3, positive: true },
-  { text: "Influencer promotes microdosing in trendy Brooklyn cafes. Psychedelics popular.", impactDrugSpecific: false, impactCategory: ['psychedelics'], impactFactor: 0.12, positive: true },
-  { text: "Heatwave grips NYC! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.05, positive: false },
-  { text: "Staten Island Ferry becomes popular spot for discreet deals.", impactDrugSpecific: false, impactFactor: 0.05, positive: true },
-  { text: "Art scene in Queens creates demand for 'creative' substances.", impactDrugSpecific: false, impactCategory: ['psychedelics', 'cheap'], impactFactor: 0.1, positive: true},
+  { text: "Police crack down on {drug} trade in {location}. Prices affected!", impactDrugSpecific: true, impactFactor: 0.25, positive: true },
+  { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.15, positive: true },
+  { text: "New synthetic {drug} floods {location}'s market. Prices affected!", impactDrugSpecific: true, impactFactor: -0.20, positive: false },
+  { text: "Celebrity overdoses on {drug} in a Manhattan penthouse. Public outcry!", impactDrugSpecific: true, impactFactor: -0.1, positive: false },
+  { text: "Economic boom in NYC! More disposable income for recreational use.", impactDrugSpecific: false, impactFactor: 0.10, positive: true },
+  { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.08, positive: false },
+  { text: "Music festival in Brooklyn! Demand for party drugs up.", impactDrugSpecific: false, impactCategory: ['party'], impactFactor: 0.20, positive: true },
+  { text: "Wall Street traders seek focus enhancers. Demand high in Manhattan.", impactDrugSpecific: false, impactCategory: ['stimulants', 'prescription'], impactFactor: 0.12, positive: true },
+  { text: "Increased patrols on bridges and tunnels. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.15, positive: true },
+  { text: "New city legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.10, positive: false },
+  { text: "Rival gang war in The Bronx disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.08, positive: true },
+  { text: "Health crisis in Queens leads to crackdown on opioids.", impactDrugSpecific: false, impactCategory: ['opioids'], impactFactor: 0.20, positive: true },
+  { text: "Influencer promotes microdosing in trendy Brooklyn cafes. Psychedelics popular.", impactDrugSpecific: false, impactCategory: ['psychedelics'], impactFactor: 0.09, positive: true },
+  { text: "Heatwave grips NYC! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.03, positive: false },
+  { text: "Staten Island Ferry becomes popular spot for discreet deals.", impactDrugSpecific: false, impactFactor: 0.04, positive: true },
+  { text: "Art scene in Queens creates demand for 'creative' substances.", impactDrugSpecific: false, impactCategory: ['psychedelics', 'cheap'], impactFactor: 0.07, positive: true},
 ];
 
 
@@ -124,16 +129,17 @@ export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
 
 
     switch (location) {
-      case "Manhattan": price *= 1.20; break;
-      case "Brooklyn": price *= 1.10; break;
+      case "Manhattan": price *= 1.15; break; // Adjusted from 1.20
+      case "Brooklyn": price *= 1.08; break;  // Adjusted from 1.10
       case "Queens": price *= 1.00; break;
-      case "The Bronx": price *= 0.90; break;
-      case "Staten Island": price *= 0.85; break;
+      case "The Bronx": price *= 0.92; break; // Adjusted from 0.90
+      case "Staten Island": price *= 0.88; break; // Adjusted from 0.85
       default: price *= 1.0;
     }
     return {
       drug: drug.name,
       price: Math.max(1, Math.round(price)),
+      volatility: drug.volatility,
     };
   });
 }
@@ -147,7 +153,7 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
 
   const headlines: LocalHeadline[] = [];
-  const numHeadlines = Math.floor(Math.random() * 3) + 1;
+  const numHeadlines = Math.floor(Math.random() * 3) + 1; // 1 to 3 headlines
 
   const availableHeadlineTemplates = [...ALL_HEADLINES];
 
@@ -168,7 +174,7 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
 
     headlines.push({
       headline: headlineText,
-      priceImpact: selectedTemplate.impactFactor,
+      priceImpact: selectedTemplate.impactFactor, // This is the raw +- percentage (e.g., 0.1 or -0.05)
       affectedDrug: affectedDrugName,
       affectedCategories: selectedTemplate.impactCategory,
     });
