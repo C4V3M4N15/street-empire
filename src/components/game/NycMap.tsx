@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-// Removed Image import: import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LocalHeadline } from '@/services/market';
@@ -16,17 +15,17 @@ interface NycMapProps {
 }
 
 const boroughs = [
-  // Coordinates adjusted for a rough NYC layout representation
-  // Manhattan: Long, relatively narrow, slightly east of center.
-  { name: 'Manhattan', top: '20%', left: '45%', width: '10%', height: '60%' },
-  // Brooklyn: South-east of Manhattan, fairly large.
-  { name: 'Brooklyn', top: '55%', left: '52%', width: '22%', height: '30%' },
-  // Queens: East of Brooklyn & Manhattan, largest area.
-  { name: 'Queens', top: '35%', left: '68%', width: '30%', height: '50%' },
-  // The Bronx: North/North-east of Manhattan.
-  { name: 'The Bronx', top: '5%', left: '50%', width: '25%', height: '25%' },
-  // Staten Island: South-west of Manhattan, more isolated.
-  { name: 'Staten Island', top: '65%', left: '25%', width: '18%', height: '25%' },
+  // Coordinates and dimensions adjusted to approximate the provided map
+  // 1: Manhattan (Green)
+  { name: 'Manhattan', top: '15%', left: '42%', width: '12%', height: '55%', bgColor: 'bg-green-500/70', hoverBgColor: 'hover:bg-green-600/90', borderColor: 'border-green-700' },
+  // 2: Brooklyn (Yellow)
+  { name: 'Brooklyn', top: '50%', left: '48%', width: '20%', height: '30%', bgColor: 'bg-yellow-400/70', hoverBgColor: 'hover:bg-yellow-500/90', borderColor: 'border-yellow-600' },
+  // 3: Queens (Orange)
+  { name: 'Queens', top: '30%', left: '60%', width: '30%', height: '45%', bgColor: 'bg-orange-500/70', hoverBgColor: 'hover:bg-orange-600/90', borderColor: 'border-orange-700' },
+  // 4: The Bronx (Red)
+  { name: 'The Bronx', top: '5%', left: '48%', width: '22%', height: '25%', bgColor: 'bg-red-500/70', hoverBgColor: 'hover:bg-red-600/90', borderColor: 'border-red-700' },
+  // 5: Staten Island (Purple)
+  { name: 'Staten Island', top: '60%', left: '22%', width: '18%', height: '28%', bgColor: 'bg-purple-500/70', hoverBgColor: 'hover:bg-purple-600/90', borderColor: 'border-purple-700' },
 ];
 
 const HeadlineItem: React.FC<{ headline: LocalHeadline }> = ({ headline }) => {
@@ -81,15 +80,17 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
 
   return (
     <div className="space-y-4">
-      <div className="relative w-full aspect-[4/3] bg-muted rounded-md overflow-hidden shadow-lg">
-        {/* Removed Image component. The div itself is the map canvas. */}
+      <div 
+        className="relative w-full aspect-[4/3] bg-blue-300/30 rounded-md overflow-hidden shadow-lg border-2 border-blue-400/50"
+        data-ai-hint="new york city map" // Water background color
+      >
         {boroughs.map((borough) => (
           <button
             key={borough.name}
             className={`absolute p-1 sm:p-2 border-2 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring
               ${currentLocation === borough.name 
-                ? 'bg-accent/90 border-accent text-accent-foreground shadow-xl z-10' 
-                : 'bg-card/70 border-card hover:bg-primary/70 hover:border-primary'}
+                ? `${borough.bgColor.replace('/70', '/90')} ${borough.borderColor} text-white shadow-xl z-10 ring-2 ring-offset-2 ring-white` 
+                : `${borough.bgColor} ${borough.borderColor} text-white ${borough.hoverBgColor}`}
             `}
             style={{ top: borough.top, left: borough.left, width: borough.width, height: borough.height }}
             onMouseEnter={() => handleMouseEnter(borough.name)}
@@ -98,8 +99,8 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
             disabled={isGameLoading || currentLocation === borough.name}
             aria-label={`Travel to ${borough.name}`}
           >
-            <span className="text-[10px] sm:text-xs font-semibold">{borough.name}</span>
-            {currentLocation === borough.name && <Pin className="absolute top-1 right-1 h-3 w-3 sm:h-4 sm:w-4" />}
+            <span className="text-[10px] sm:text-xs font-bold drop-shadow-sm">{borough.name}</span>
+            {currentLocation === borough.name && <Pin className="absolute top-1 right-1 h-3 w-3 sm:h-4 sm:w-4 text-white" />}
           </button>
         ))}
       </div>
@@ -134,3 +135,4 @@ export function NycMap({ currentLocation, onTravel, fetchHeadlinesForLocation, i
     </div>
   );
 }
+
