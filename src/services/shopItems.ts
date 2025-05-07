@@ -11,12 +11,12 @@ export const AVAILABLE_WEAPONS: Weapon[] = [
 ];
 
 export const AVAILABLE_ARMOR: Armor[] = [
-  { name: 'Jacket', price: 150, protectionBonus: 2 },
-  { name: 'Leather Jacket', price: 500, protectionBonus: 5 },
-  { name: 'Bike Helmet & Pads', price: 1000, protectionBonus: 8 },
-  { name: 'Tac Vest', price: 2800, protectionBonus: 12 },
-  { name: 'Kevlar', price: 5500, protectionBonus: 20 },
-  { name: 'John Wick Suit', price: 11000, protectionBonus: 30 },
+  { id: 'jacket', name: 'Jacket', price: 150, protectionBonus: 2 },
+  { id: 'leather_jacket', name: 'Leather Jacket', price: 500, protectionBonus: 5 },
+  { id: 'bike_gear', name: 'Bike Helmet & Pads', price: 1000, protectionBonus: 8 },
+  { id: 'tac_vest', name: 'Tac Vest', price: 2800, protectionBonus: 12 },
+  { id: 'kevlar', name: 'Kevlar', price: 5500, protectionBonus: 20 },
+  { id: 'john_wick_suit', name: 'John Wick Suit', price: 11000, protectionBonus: 30 },
 ];
 
 export const AVAILABLE_HEALING_ITEMS: HealingItem[] = [

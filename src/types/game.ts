@@ -23,6 +23,7 @@ export interface Weapon {
 }
 
 export interface Armor {
+  id: string; // Unique ID for the armor piece
   name: string;
   price: number;
   protectionBonus: number; // Represents damage reduction or protection points
@@ -57,8 +58,9 @@ export interface PlayerStats {
   rank: PlayerRank;
   maxInventoryCapacity: number; // Maximum number of drug units player can carry
   equippedWeapon: Weapon | null; // Player's current weapon, null for fists
-  equippedArmor: Armor | null; // Player's current armor, null for no armor
+  equippedArmor: Armor | null; // Player's current best owned armor
   purchasedUpgradeIds: string[]; // IDs of one-time capacity upgrades purchased
+  purchasedArmorIds: string[]; // IDs of one-time armor upgrades purchased
 }
 
 export interface EnemyStats {

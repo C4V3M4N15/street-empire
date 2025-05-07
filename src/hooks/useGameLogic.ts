@@ -6,7 +6,7 @@ import type { PlayerStats, GameState, LogEntry, LogEventType, InventoryItem, Wea
 import type { GameEvent } from '@/types/events';
 import { getMarketPrices, getLocalHeadlines, type DrugPrice, type LocalHeadline } from '@/services/market';
 import { generateEnemyStats, getBattleResultConsequences, type BattleResult } from '@/services/combat';
-import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgrades } from '@/services/shopItems';
+import { getShopWeapons, getShopArmor, getShopHealingItems, getShopCapacityUpgrades, AVAILABLE_ARMOR } from '@/services/shopItems'; // Import AVAILABLE_ARMOR
 import { getTodaysEvents, drugCategories, resetUniqueEvents } from '@/services/eventService'; 
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid'; 
@@ -29,6 +29,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   equippedWeapon: null, 
   equippedArmor: null, 
   purchasedUpgradeIds: [],
+  purchasedArmorIds: [], // Initialize purchasedArmorIds
 };
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
@@ -46,7 +47,7 @@ const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null):
     });
     // Category modifiers
     event.effects.categoryPriceModifiers?.forEach(catMod => {
-      const categoryDrugs = drugCategories[catMod.categoryKey] || [];
+      const categoryDrugs = drugCategories[catMod.categoryKey as keyof typeof drugCategories];
       if (categoryDrugs.includes(dp.drug)) {
         newPrice *= catMod.factor;
       }
@@ -160,7 +161,7 @@ export function useGameLogic() {
         marketPrices: adjustedPrices,
         localHeadlines: headlines,
         availableWeapons: weapons,
-        availableArmor: armor,
+        availableArmor: armor, // Ensure this is populated
         availableHealingItems: healingItems,
         availableCapacityUpgrades: capacityUpgrades,
         activeBoroughEvents: dailyEvents,
@@ -211,8 +212,6 @@ export function useGameLogic() {
       const earnings = quantity * price;
       const newInventory = { ...currentStats.inventory };
       
-      // Calculate cost of goods sold based on average cost
-      // Ensure quantity is not zero before division to prevent NaN
       const avgCostPerUnit = currentItem.quantity > 0 ? (currentItem.totalCost / currentItem.quantity) : 0;
       const costOfGoodsSold = avgCostPerUnit * quantity;
       
@@ -247,13 +246,43 @@ export function useGameLogic() {
   const buyArmor = useCallback((armorToBuy: Armor) => {
     setGameState(prev => {
       const cs = prev.playerStats;
-      if (cs.cash < armorToBuy.price) { toast({ title: "Not Enough Cash", variant: "destructive" }); return prev; }
-      if (cs.equippedArmor?.name === armorToBuy.name) { toast({ title: "Already Equipped" }); return prev; }
-      const msg = `Purchased ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}.`;
-      toast({ title: "Armor Acquired!", description: msg }); addLogEntry('shop_armor_purchase', msg);
-      return { ...prev, playerStats: { ...cs, cash: cs.cash - armorToBuy.price, equippedArmor: armorToBuy } };
+
+      if (cs.purchasedArmorIds.includes(armorToBuy.id)) {
+        toast({ title: "Already Owned", description: `You already own ${armorToBuy.name}.` });
+        return prev;
+      }
+      if (cs.cash < armorToBuy.price) {
+        toast({ title: "Not Enough Cash", variant: "destructive" });
+        return prev;
+      }
+
+      const newPlayerStats = {
+        ...cs,
+        cash: cs.cash - armorToBuy.price,
+        purchasedArmorIds: [...cs.purchasedArmorIds, armorToBuy.id],
+      };
+
+      // Determine the new best equipped armor from all available armors in the game state
+      let bestOwnedArmor: Armor | null = null;
+      if (newPlayerStats.purchasedArmorIds.length > 0) {
+         // Filter from prev.availableArmor which should contain all master armor items
+        const ownedArmors = prev.availableArmor.filter(a => newPlayerStats.purchasedArmorIds.includes(a.id));
+        if (ownedArmors.length > 0) {
+          bestOwnedArmor = ownedArmors.reduce((best, current) =>
+            current.protectionBonus > best.protectionBonus ? current : best
+          );
+        }
+      }
+      newPlayerStats.equippedArmor = bestOwnedArmor;
+
+      const msg = `Purchased ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection is now ${newPlayerStats.equippedArmor?.protectionBonus || 0}.`;
+      toast({ title: "Armor Acquired!", description: msg });
+      addLogEntry('shop_armor_purchase', msg);
+
+      return { ...prev, playerStats: newPlayerStats };
     });
   }, [toast, addLogEntry]);
+
 
   const buyHealingItem = useCallback((itemToBuy: HealingItem) => {
     setGameState(prev => {
@@ -309,16 +338,14 @@ export function useGameLogic() {
       ...prev,
       playerStats: { ...prev.playerStats, currentLocation: targetLocation },
       isLoadingMarket: true,
-      localHeadlines: [], // Clear old headlines immediately
-      marketPrices: [],   // Clear old prices immediately
+      localHeadlines: [], 
+      marketPrices: [],   
     }));
 
     try {
       const newPrices = await getMarketPrices(targetLocation);
       const newHeadlines = await getLocalHeadlines(targetLocation);
       
-      // Need to get the activeBoroughEvents from the latest state for price modification.
-      // This can be tricky if handleNextDay is also running. For travel, use the state at the time of travel.
       const currentActiveEvents = gameState.activeBoroughEvents; 
       
       let finalPrices = applyHeadlineImpacts(newPrices, newHeadlines);
@@ -336,7 +363,7 @@ export function useGameLogic() {
       toast({ title: "Market Error", description: `Could not load market data for ${targetLocation}.`, variant: "destructive" });
       setGameState(prev => ({...prev, isLoadingMarket: false}));
     }
-  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, applyEventPriceModifiers]); // Added applyEventPriceModifiers
+  }, [toast, addLogEntry, gameState.playerStats.currentLocation, gameState.activeBoroughEvents, applyHeadlineImpacts, applyEventPriceModifiers]); 
 
   const fetchHeadlinesForLocation = useCallback(async (location: string): Promise<LocalHeadline[]> => {
     try { return await getLocalHeadlines(location); } 
@@ -345,7 +372,7 @@ export function useGameLogic() {
 
   const startBattle = useCallback((opponentType: 'police' | 'gang' | 'fiend') => {
     setGameState(prev => {
-      if (prev.isBattleActive) return prev; // Prevent starting battle if already in one
+      if (prev.isBattleActive) return prev; 
 
       const enemy = generateEnemyStats(opponentType, prev.playerStats);
       addLogEntry('info', `Battle started against ${enemy.name}!`);
@@ -371,7 +398,6 @@ export function useGameLogic() {
 
       if (action === 'attack') {
         const playerAttackPower = PLAYER_BASE_ATTACK + (newPlayerStats.equippedWeapon?.damageBonus || 0);
-        // const playerDefenseFromArmor = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0); // Used by enemy
         
         const playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
         newEnemyStats.health = Math.max(0, newEnemyStats.health - playerDamage);
@@ -399,21 +425,18 @@ export function useGameLogic() {
         let finalBattleMessage = playerWon ? `You defeated ${newEnemyStats.name}!` : "You have been defeated!";
         let finalIsGameOver = prev.isGameOver;
 
-        if (!playerWon && newPlayerStats.health <= 0) { // Ensure game over only if health is 0
-          finalIsGameOver = true; // Player lost, game over
+        if (!playerWon && newPlayerStats.health <= 0) { 
+          finalIsGameOver = true; 
         }
         
-        // Update player health from battleResult if needed, though it's already modified above
-        // newPlayerStats.health is already set
-
         return { 
           ...prev, 
           playerStats: newPlayerStats, 
-          currentEnemy: newEnemyStats, // Keep enemy stats to show final state if needed by UI
+          currentEnemy: newEnemyStats, 
           battleLog: newBattleLog, 
           battleMessage: finalBattleMessage, 
           isGameOver: finalIsGameOver,
-          isBattleActive: true, // Keep battle screen active to show message, then onEndBattle will clear it
+          isBattleActive: true, 
         };
       }
       return { ...prev, playerStats: newPlayerStats, currentEnemy: newEnemyStats, battleLog: newBattleLog.slice(-20) };
@@ -429,7 +452,7 @@ export function useGameLogic() {
         currentEnemy: null, 
         battleLog: [], 
         battleMessage: null,
-        isGameOver: prev.isGameOver || wasGameOverFromBattle, // Preserve game over state
+        isGameOver: prev.isGameOver || wasGameOverFromBattle, 
       };
     });
   }, []);
@@ -553,7 +576,6 @@ export function useGameLogic() {
       startBattle(selectedOpponentType);
     }
 
-    // Check for game over *before* rank up if health is 0 but battle wasn't active (e.g. event damage)
     if (currentStats.health <= 0 && !gameState.isBattleActive) {
       setGameState(prev => ({ ...prev, playerStats: currentStats, isGameOver: true, isLoadingNextDay: false, battleMessage: "Succumbed to injuries or events." }));
       toast({ title: "Game Over", description: "You succumbed to your fate.", variant: "destructive" });

@@ -318,20 +318,21 @@ export function MarketInfoCard({
                 <TabsContent value="armor" className="mt-0">
                     <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                       {availableArmor.length > 0 ? (
-                        availableArmor.map(armor => (
-                          <div key={armor.name} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
+                        availableArmor.map(armorItem => (
+                          <div key={armorItem.id} className="flex items-center justify-between p-2.5 border border-border/50 rounded-md bg-card/50">
                             <div>
-                              <p className="text-sm font-medium">{armor.name}</p>
-                              <p className="text-xs text-muted-foreground">DEF: +{armor.protectionBonus} | Cost: ${armor.price.toLocaleString()}</p>
+                              <p className="text-sm font-medium">{armorItem.name}</p>
+                              <p className="text-xs text-muted-foreground">DEF: +{armorItem.protectionBonus} | Cost: ${armorItem.price.toLocaleString()}</p>
                             </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => buyArmor(armor)}
-                              disabled={isLoading || playerStats.cash < armor.price || (playerStats.equippedArmor?.name === armor.name)}
+                              onClick={() => buyArmor(armorItem)}
+                              disabled={isLoading || playerStats.cash < armorItem.price || playerStats.purchasedArmorIds.includes(armorItem.id)}
                               className="text-xs px-3"
                             >
-                              {playerStats.equippedArmor?.name === armor.name ? 'Equipped' : 'Buy'}
+                              {playerStats.purchasedArmorIds.includes(armorItem.id) ? 'Owned' : 
+                               (playerStats.equippedArmor?.id === armorItem.id ? 'Equipped' : 'Buy')}
                             </Button>
                           </div>
                         ))
