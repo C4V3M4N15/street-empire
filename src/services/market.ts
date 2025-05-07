@@ -36,7 +36,7 @@ export interface LocalHeadline {
   affectedCategories?: string[];
 }
 
-const ALL_DRUGS = [
+export const ALL_DRUGS = [ // Exported ALL_DRUGS
   { name: 'Weed', basePrice: 20, volatility: 0.35 },
   { name: 'Cocaine', basePrice: 650, volatility: 0.55 },
   { name: 'Heroin', basePrice: 450, volatility: 0.5 },
@@ -62,15 +62,15 @@ const ALL_DRUGS = [
   { name: 'DMT', basePrice: 200, volatility: 0.5 },
   { name: 'Mescaline', basePrice: 90, volatility: 0.4 },
   { name: 'Ayahuasca Brew', basePrice: 100, volatility: 0.45 },
-  { name: 'Ecstasy (MDMA)', basePrice: 100, volatility: 0.35 }, // Added Ecstasy as it's in drugCategories
+  { name: 'Ecstasy (MDMA)', basePrice: 100, volatility: 0.35 }, 
 ];
 
 const ALL_HEADLINES: Array<{
   text: string;
   impactDrugSpecific: boolean;
-  impactCategory?: string[]; // Using keys from drugCategories in eventService.ts
+  impactCategory?: string[]; 
   impactFactor: number;
-  positive: boolean; // Currently unused, but kept for potential future UI hints
+  positive: boolean; 
 }> = [
   { text: "Police crack down on {drug} trade in {location}. Prices skyrocket!", impactDrugSpecific: true, impactFactor: 0.5, positive: true },
   { text: "Major bust! {drug} supply dwindles across the city.", impactDrugSpecific: true, impactFactor: 0.3, positive: true },
@@ -80,13 +80,13 @@ const ALL_HEADLINES: Array<{
   { text: "City-wide recession hits. People cutting back on luxuries.", impactDrugSpecific: false, impactFactor: -0.1, positive: false },
   { text: "Music festival in Brooklyn! Demand for party drugs up.", impactDrugSpecific: false, impactCategory: ['party'], impactFactor: 0.25, positive: true },
   { text: "Wall Street traders seek focus enhancers. Demand high in Manhattan.", impactDrugSpecific: false, impactCategory: ['stimulants', 'prescription'], impactFactor: 0.18, positive: true },
-  { text: "Increased patrols on bridges and tunnels. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.2, positive: true }, // General impact
-  { text: "New city legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.15, positive: false }, // General impact
-  { text: "Rival gang war in The Bronx disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.1, positive: true }, // General impact
+  { text: "Increased patrols on bridges and tunnels. Smuggling routes disrupted.", impactDrugSpecific: false, impactFactor: 0.2, positive: true }, 
+  { text: "New city legislation eases penalties for some drugs.", impactDrugSpecific: false, impactFactor: -0.15, positive: false }, 
+  { text: "Rival gang war in The Bronx disrupts supply chains.", impactDrugSpecific: false, impactFactor: 0.1, positive: true }, 
   { text: "Health crisis in Queens leads to crackdown on opioids.", impactDrugSpecific: false, impactCategory: ['opioids'], impactFactor: 0.3, positive: true },
   { text: "Influencer promotes microdosing in trendy Brooklyn cafes. Psychedelics popular.", impactDrugSpecific: false, impactCategory: ['psychedelics'], impactFactor: 0.12, positive: true },
-  { text: "Heatwave grips NYC! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.05, positive: false }, // General impact
-  { text: "Staten Island Ferry becomes popular spot for discreet deals.", impactDrugSpecific: false, impactFactor: 0.05, positive: true }, // General impact
+  { text: "Heatwave grips NYC! People staying indoors, less street activity.", impactDrugSpecific: false, impactFactor: -0.05, positive: false }, 
+  { text: "Staten Island Ferry becomes popular spot for discreet deals.", impactDrugSpecific: false, impactFactor: 0.05, positive: true }, 
   { text: "Art scene in Queens creates demand for 'creative' substances.", impactDrugSpecific: false, impactCategory: ['psychedelics', 'cheap'], impactFactor: 0.1, positive: true},
 ];
 
@@ -98,7 +98,7 @@ const ALL_HEADLINES: Array<{
  */
 function gaussianRandom() {
   let u = 0, v = 0;
-  while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+  while(u === 0) u = Math.random(); 
   while(v === 0) v = Math.random();
   return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
 }
@@ -109,21 +109,21 @@ function gaussianRandom() {
  * @returns A promise that resolves to an array of DrugPrice objects.
  */
 export async function getMarketPrices(location: string): Promise<DrugPrice[]> {
-  // Simulate API call delay
+  
   await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
 
-  // Determine number of drugs to show (e.g., 15 to 20)
+  
   const numDrugsToShow = 15 + Math.floor(Math.random() * 6);
   const shuffledDrugs = [...ALL_DRUGS].sort(() => 0.5 - Math.random());
   const selectedDrugs = shuffledDrugs.slice(0, numDrugsToShow);
 
   return selectedDrugs.map(drug => {
-    // Generate a random fluctuation using a Gaussian distribution
+    
     const priceFluctuation = gaussianRandom() * drug.volatility * 0.5; 
     
     let price = drug.basePrice * (1 + priceFluctuation);
     
-    // Add location-based modifier for NYC boroughs
+    
     switch (location) {
       case "Manhattan": price *= 1.20; break;
       case "Brooklyn": price *= 1.10; break;
@@ -148,7 +148,7 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
 
   const headlines: LocalHeadline[] = [];
-  const numHeadlines = Math.floor(Math.random() * 3) + 1; // 1 to 3 headlines
+  const numHeadlines = Math.floor(Math.random() * 3) + 1; 
 
   const availableHeadlineTemplates = [...ALL_HEADLINES];
 

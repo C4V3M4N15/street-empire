@@ -2,25 +2,26 @@
 "use client";
 
 import type { DrugPrice, LocalHeadline } from '@/services/market';
-import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game'; // Import HealingItem type
+import type { Weapon, Armor, HealingItem, CapacityUpgrade } from '@/types/game'; 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap } from 'lucide-react'; // Added Megaphone, Zap
-import type { PlayerStats, GameState } from '@/types/game'; // Import GameState for activeBoroughEvents
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins, Map, Store, ShieldPlus, Sword, ShieldCheck, PackagePlus, BriefcaseMedical, Megaphone, Zap, Info } from 'lucide-react'; // Added Info, Megaphone, Zap
+import type { PlayerStats, GameState } from '@/types/game'; 
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NycMap } from './NycMap';
-import { cn } from '@/lib/utils'; // For conditional classnames
+import { ReferencePanel } from './ReferencePanel'; // Import ReferencePanel
+import { cn } from '@/lib/utils'; 
 
 interface MarketInfoCardProps {
   marketPrices: DrugPrice[];
   localHeadlines: LocalHeadline[];
   isLoading: boolean;
   playerStats: PlayerStats;
-  activeBoroughEvents: GameState['activeBoroughEvents']; // Add activeBoroughEvents prop
+  activeBoroughEvents: GameState['activeBoroughEvents']; 
   availableWeapons: Weapon[];
   availableArmor: Armor[];
   availableHealingItems: HealingItem[]; 
@@ -59,7 +60,7 @@ export function MarketInfoCard({
   localHeadlines,
   isLoading,
   playerStats,
-  activeBoroughEvents, // Destructure prop
+  activeBoroughEvents, 
   availableWeapons,
   availableArmor,
   availableHealingItems,
@@ -127,7 +128,7 @@ export function MarketInfoCard({
     <Card className="shadow-md">
       <Tabs defaultValue="market" className="w-full">
         <CardHeader className="pb-0 pt-4 px-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4"> {/* Changed to grid-cols-4 */}
                 <TabsTrigger value="market" className="flex items-center">
                     <LineChart className="mr-2 h-4 w-4" /> Market
                 </TabsTrigger>
@@ -136,6 +137,9 @@ export function MarketInfoCard({
                 </TabsTrigger>
                 <TabsTrigger value="shop" className="flex items-center">
                     <Store className="mr-2 h-4 w-4" /> The Git'n Place
+                </TabsTrigger>
+                <TabsTrigger value="reference" className="flex items-center"> {/* New Reference Tab */}
+                    <Info className="mr-2 h-4 w-4" /> Reference
                 </TabsTrigger>
             </TabsList>
         </CardHeader>
@@ -213,7 +217,7 @@ export function MarketInfoCard({
                           {currentQuantityInput > 0 && (
                             <div className="text-xs text-muted-foreground h-3.5">
                               {costForBuy > 0 && canBuy && !canFit && <p className="text-destructive">Not enough space</p>}
-                              {costForBuy > 0 && canBuy && canFit && <p>Cost: ${costForBuy.toLocaleString()}</p> }
+                              {costForBuy > 0 && canBuy && canFit && <p>Cost: ${costForBuy.toLocaleString()}</p>}
                               {costForBuy > 0 && !canBuy && playerStats.cash < costForBuy && <p className="text-destructive">Need: ${costForBuy.toLocaleString()}</p>}
                             </div>
                           )}
@@ -237,7 +241,7 @@ export function MarketInfoCard({
                         headline={`${currentEventInLocation.name}: ${currentEventInLocation.text}`} 
                         type={currentEventInLocation.type}
                         isEvent={true}
-                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined} // crude way to show some impact
+                        impact={currentEventInLocation.effects.priceModifier ? Object.values(currentEventInLocation.effects.priceModifier)[0] : undefined} 
                       />
                   ) : (
                      <p className="text-xs text-muted-foreground italic py-1">No major events in {playerStats.currentLocation} today.</p>
@@ -395,6 +399,11 @@ export function MarketInfoCard({
                   </div>
                 </TabsContent>
             </Tabs>
+          </CardContent>
+        </TabsContent>
+        <TabsContent value="reference" className="p-0"> {/* New Reference Tab Content */}
+          <CardContent className="p-4 pt-3">
+            <ReferencePanel />
           </CardContent>
         </TabsContent>
       </Tabs>
