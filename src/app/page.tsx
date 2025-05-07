@@ -4,7 +4,7 @@ import { PlayerStatsCard } from '@/components/game/PlayerStatsCard';
 import { MarketInfoCard } from '@/components/game/MarketInfoCard';
 import { GameControls } from '@/components/game/GameControls';
 import { GameOverDialog } from '@/components/game/GameOverDialog';
-import { EventLogCard } from '@/components/game/EventLogCard';
+import { UnifiedLogPanel } from '@/components/game/UnifiedLogPanel'; // Updated import
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -14,7 +14,7 @@ export default function StreetEmpirePage() {
     playerStats,
     marketPrices,
     localHeadlines,
-    activeBoroughEvents, // Get activeBoroughEvents
+    activeBoroughEvents, 
     availableWeapons,
     availableArmor,
     availableHealingItems, 
@@ -64,7 +64,7 @@ export default function StreetEmpirePage() {
             localHeadlines={localHeadlines}
             isLoading={isLoadingNextDay || (isLoadingMarket && marketPrices.length === 0 && availableWeapons.length === 0 && availableArmor.length === 0 && availableHealingItems.length === 0)}
             playerStats={playerStats}
-            activeBoroughEvents={activeBoroughEvents} // Pass down
+            activeBoroughEvents={activeBoroughEvents} 
             availableWeapons={availableWeapons}
             availableArmor={availableArmor}
             availableHealingItems={availableHealingItems} 
@@ -76,7 +76,7 @@ export default function StreetEmpirePage() {
             travelToLocation={travelToLocation}
             fetchHeadlinesForLocation={fetchHeadlinesForLocation}
           />
-           <EventLogCard eventLog={eventLog} />
+           <UnifiedLogPanel eventLog={eventLog} /> {/* Updated component */}
         </div>
       </main>
 
