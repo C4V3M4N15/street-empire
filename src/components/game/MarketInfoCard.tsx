@@ -1,14 +1,16 @@
 
 "use client";
 
-import * as React from 'react';
 import type { DrugPrice, LocalHeadline } from '@/services/market';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2 } from 'lucide-react';
+import { LineChart, Newspaper, TrendingUp, AlertTriangle, Loader2, Package, DollarSign, ShoppingCart, Coins } from 'lucide-react';
 import type { PlayerStats } from '@/types/game';
+import { Separator } from '@/components/ui/separator';
+import React from 'react';
+
 
 interface MarketInfoCardProps {
   marketPrices: DrugPrice[];
@@ -21,12 +23,12 @@ interface MarketInfoCardProps {
 
 const HeadlineItem: React.FC<{ headline: string; impact: number }> = ({ headline, impact }) => {
   const impactColor = impact > 0 ? 'text-accent' : impact < 0 ? 'text-destructive' : 'text-muted-foreground';
-  const ImpactIcon = impact > 0 ? TrendingUp : impact < 0 ? AlertTriangle : TrendingUp;
+  const ImpactIcon = impact > 0 ? TrendingUp : impact < 0 ? AlertTriangle : TrendingUp; // Default to TrendingUp if neutral
   return (
-    <div className="flex items-start space-x-2 py-2 border-b border-border/50 last:border-b-0">
-      <ImpactIcon className={`h-4 w-4 mt-1 shrink-0 ${impactColor}`} />
+    <div className="flex items-start space-x-2 py-1.5 border-b border-border/30 last:border-b-0">
+      <ImpactIcon className={`h-4 w-4 mt-0.5 shrink-0 ${impactColor}`} />
       <div>
-        <p className="text-sm">{headline}</p>
+        <p className="text-xs">{headline}</p>
         <p className={`text-xs font-medium ${impactColor}`}>
           Impact: {impact > 0 ? '+' : ''}{(impact * 100).toFixed(0)}%
         </p>
@@ -43,50 +45,72 @@ export function MarketInfoCard({ marketPrices, localHeadlines, isLoading, player
     if (value === "" || (numValue >= 0 && !isNaN(numValue))) {
       setTransactionQuantities(prev => ({ ...prev, [drugName]: value }));
     } else if (isNaN(numValue) && value !== "") {
-      // Allow clearing the input or if it's not a number but not empty (e.g. during typing)
       setTransactionQuantities(prev => ({ ...prev, [drugName]: value }));
     }
   };
   
   const getNumericQuantity = (drugName: string): number => {
     const valStr = transactionQuantities[drugName] || "";
-    if (valStr === "") return 0; // Treat empty string as 0 for calculation
+    if (valStr === "") return 0;
     const val = parseInt(valStr, 10);
     return isNaN(val) || val < 0 ? 0 : val;
   };
 
+  const renderSkeletons = () => (
+    <>
+      <div className="mb-4">
+        <Skeleton className="h-5 w-1/2 mb-2" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between py-2.5 border-b border-border/30">
+            <div className="w-1/3">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2 mt-1" />
+            </div>
+            <Skeleton className="h-4 w-1/6" />
+            <div className="flex items-center space-x-1 w-2/5 justify-end">
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-12" />
+              <Skeleton className="h-8 w-12" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <Skeleton className="h-5 w-1/3 mb-2" />
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="py-2 border-b border-border/30">
+            <Skeleton className="h-3 w-full mb-1" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center text-2xl">
-          <LineChart className="mr-2 h-7 w-7 text-primary-foreground" /> Daily Market
+    <Card className="shadow-md">
+      <CardHeader className="pb-3 pt-4 px-4">
+        <CardTitle className="flex items-center text-xl">
+          <LineChart className="mr-2 h-6 w-6 text-primary-foreground" /> Market Overview
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0">
         {(isLoading && marketPrices.length === 0) ? (
-          <>
-            <Skeleton className="h-6 w-3/4 mb-3" />
-            <Skeleton className="h-4 w-1/2 mb-4" />
-            <div className="space-y-4">
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-28 w-full" />
-            </div>
-          </>
+          renderSkeletons()
         ) : (
           <div className="relative">
             {(isLoading && marketPrices.length > 0) && (
-              <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg z-10">
+              <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-lg z-10 -m-4">
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
               </div>
             )}
             
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <TrendingUp className="mr-2 h-5 w-5 text-accent" /> Prices & Inventory
+            <h3 className="text-md font-semibold mb-2 flex items-center">
+              <DollarSign className="mr-2 h-4 w-4 text-accent" /> Drug Prices & Inventory
             </h3>
             {marketPrices.length > 0 ? (
-              <div className="space-y-4">
-                {marketPrices.map(drug => {
+              <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+                {marketPrices.map((drug, index) => {
                   const playerHoldings = playerStats.inventory[drug.drug] || 0;
                   const currentQuantityInput = getNumericQuantity(drug.drug);
                   const costForBuy = currentQuantityInput * drug.price;
@@ -96,69 +120,77 @@ export function MarketInfoCard({ marketPrices, localHeadlines, isLoading, player
                   const canSell = playerHoldings >= currentQuantityInput && currentQuantityInput > 0;
 
                   return (
-                    <div key={drug.drug} className="p-3 border border-border/70 rounded-lg bg-card/50 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-md font-semibold">{drug.drug}</span>
-                        <span className="text-md font-bold text-accent">${drug.price.toLocaleString()}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">You have: {playerHoldings.toLocaleString()}</p>
-                      
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Input
-                          type="number"
-                          placeholder="Qty"
-                          value={transactionQuantities[drug.drug] || ""}
-                          onChange={(e) => handleQuantityChange(drug.drug, e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          className="h-9 text-sm w-24 flex-grow-0"
-                          min="0"
-                          disabled={isLoading}
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (currentQuantityInput > 0) buyDrug(drug.drug, currentQuantityInput, drug.price);
-                          }}
-                          disabled={isLoading || !canBuy}
-                          className="flex-1 sm:flex-none bg-accent hover:bg-accent/90 text-accent-foreground px-4"
-                        >
-                          Buy
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                             if (currentQuantityInput > 0) sellDrug(drug.drug, currentQuantityInput, drug.price);
-                          }}
-                          disabled={isLoading || !canSell}
-                          className="flex-1 sm:flex-none px-4"
-                        >
-                          Sell
-                        </Button>
+                    <React.Fragment key={drug.drug}>
+                    <div className="py-2.5">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 items-center gap-2 mb-1.5">
+                        <div className="col-span-1 sm:col-span-1">
+                          <p className="text-sm font-medium truncate" title={drug.drug}>{drug.drug}</p>
+                          <p className="text-xs text-muted-foreground">Have: {playerHoldings.toLocaleString()}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-accent text-right sm:text-center">${drug.price.toLocaleString()}</p>
+                        <div className="col-span-3 sm:col-span-2 flex items-center space-x-1.5 justify-end">
+                          <Input
+                            type="number"
+                            placeholder="Qty"
+                            value={transactionQuantities[drug.drug] || ""}
+                            onChange={(e) => handleQuantityChange(drug.drug, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className="h-8 text-xs w-16 flex-grow-0"
+                            min="0"
+                            disabled={isLoading}
+                          />
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                              if (currentQuantityInput > 0) buyDrug(drug.drug, currentQuantityInput, drug.price);
+                            }}
+                            disabled={isLoading || !canBuy}
+                            className="h-8 px-2.5 text-xs bg-accent hover:bg-accent/90 text-accent-foreground"
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1 sm:mr-0" /> <span className="hidden sm:inline">Buy</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                               if (currentQuantityInput > 0) sellDrug(drug.drug, currentQuantityInput, drug.price);
+                            }}
+                            disabled={isLoading || !canSell}
+                            className="h-8 px-2.5 text-xs"
+                          >
+                             <Coins className="h-3 w-3 mr-1 sm:mr-0" /> <span className="hidden sm:inline">Sell</span>
+                          </Button>
+                        </div>
                       </div>
                       {currentQuantityInput > 0 && (
-                        <div className="text-xs text-muted-foreground space-y-0.5 h-8"> {/* Fixed height to prevent layout shifts */}
-                          {canBuy && <p>Cost: ${costForBuy.toLocaleString()}</p>}
-                          {!canBuy && playerStats.cash < costForBuy && <p className="text-destructive">Need: ${costForBuy.toLocaleString()}</p>}
-                          {canSell && <p>Value: ${valueForSell.toLocaleString()}</p>}
+                        <div className="text-xs text-muted-foreground h-3.5">
+                          {costForBuy > 0 && canBuy && <p>Cost: ${costForBuy.toLocaleString()}</p> }
+                          {costForBuy > 0 && !canBuy && playerStats.cash < costForBuy && <p className="text-destructive">Need: ${costForBuy.toLocaleString()}</p>}
+                          {/* This logic might be redundant if we only show one or the other */}
+                          {/* {valueForSell > 0 && canSell && <p>Value: ${valueForSell.toLocaleString()}</p>} */}
                         </div>
                       )}
-                       {currentQuantityInput === 0 && <div className="h-8"></div>} {/* Placeholder for height consistency */}
+                      {currentQuantityInput === 0 && <div className="h-3.5"></div>}
                     </div>
+                    {index < marketPrices.length -1 && <Separator className="bg-border/50"/>}
+                    </React.Fragment>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-4">No price data available for this location.</p>
+              <p className="text-xs text-muted-foreground py-3">No price data available.</p>
             )}
             
-            <h3 className="text-lg font-semibold mt-6 mb-2 flex items-center">
-              <Newspaper className="mr-2 h-5 w-5 text-accent" /> Local Headlines
+            <h3 className="text-md font-semibold mt-4 mb-1.5 flex items-center">
+              <Newspaper className="mr-2 h-4 w-4 text-accent" /> Local Headlines
             </h3>
             {localHeadlines.length > 0 ? (
-              localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} impact={headline.priceImpact} />)
+              <div className="max-h-28 overflow-y-auto pr-1 space-y-0.5">
+                {localHeadlines.map((headline, index) => <HeadlineItem key={index} headline={headline.headline} impact={headline.priceImpact} />)}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No local headlines today.</p>
+              <p className="text-xs text-muted-foreground">No local headlines today.</p>
             )}
           </div>
         )}
@@ -166,3 +198,4 @@ export function MarketInfoCard({ marketPrices, localHeadlines, isLoading, player
     </Card>
   );
 }
+
