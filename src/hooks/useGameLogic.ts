@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -16,6 +15,12 @@ const PLAYER_BASE_ATTACK = 5;
 const PLAYER_BASE_DEFENSE = 2;
 const MAX_PLAYER_HEALTH = 100;
 
+// Combat constants
+const MISS_CHANCE = 0.15; // 15% chance to miss
+const CRITICAL_HIT_CHANCE = 0.10; // 10% chance for a critical hit
+const CRITICAL_HIT_MULTIPLIER = 1.5; // Critical hits do 50% more damage
+const FLEE_CHANCE_BASE = 0.33; // 33% base chance to flee
+
 const INITIAL_PLAYER_STATS: PlayerStats = {
   name: 'Player1',
   health: MAX_PLAYER_HEALTH,
@@ -29,7 +34,7 @@ const INITIAL_PLAYER_STATS: PlayerStats = {
   equippedWeapon: null, 
   equippedArmor: null, 
   purchasedUpgradeIds: [],
-  purchasedArmorIds: [], // Initialize purchasedArmorIds
+  purchasedArmorIds: [],
 };
 
 const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null): DrugPrice[] => {
@@ -37,15 +42,12 @@ const applyEventPriceModifiers = (prices: DrugPrice[], event: GameEvent | null):
   
   return prices.map(dp => {
     let newPrice = dp.price;
-    // Direct drug name modifier
     if (event.effects.priceModifier && event.effects.priceModifier[dp.drug]) {
       newPrice *= event.effects.priceModifier[dp.drug];
     }
-    // Specific drug list modifier (legacy, can be merged into priceModifier)
     event.effects.drugPriceModifiers?.forEach(mod => {
       if (mod.drugName === dp.drug) newPrice *= mod.factor;
     });
-    // Category modifiers
     event.effects.categoryPriceModifiers?.forEach(catMod => {
       const categoryDrugs = drugCategories[catMod.categoryKey as keyof typeof drugCategories];
       if (categoryDrugs.includes(dp.drug)) {
@@ -77,7 +79,6 @@ export function useGameLogic() {
       activeBoroughEvents: {}, 
       boroughHeatLevels: initialHeatLevels, 
       playerActivityInBoroughsThisDay: {},
-      // Battle State Init
       isBattleActive: false,
       currentEnemy: null,
       battleLog: [],
@@ -114,7 +115,6 @@ export function useGameLogic() {
             }
           }
         } else if (!headline.affectedDrug && (!headline.affectedCategories || headline.affectedCategories.length === 0)) {
-          // General headline, applies to all if no specific drug or category is mentioned
           applyThisHeadline = true;
         }
   
@@ -161,7 +161,7 @@ export function useGameLogic() {
         marketPrices: adjustedPrices,
         localHeadlines: headlines,
         availableWeapons: weapons,
-        availableArmor: armor, // Ensure this is populated
+        availableArmor: armor, 
         availableHealingItems: healingItems,
         availableCapacityUpgrades: capacityUpgrades,
         activeBoroughEvents: dailyEvents,
@@ -176,7 +176,7 @@ export function useGameLogic() {
       setGameState(prev => ({ ...prev, isLoadingMarket: false }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, addLogEntry, applyHeadlineImpacts]); // gameState.boroughHeatLevels is intentionally omitted for initial load character
+  }, [toast, addLogEntry, applyHeadlineImpacts]); 
 
   useEffect(() => {
     fetchInitialData();
@@ -262,10 +262,8 @@ export function useGameLogic() {
         purchasedArmorIds: [...cs.purchasedArmorIds, armorToBuy.id],
       };
 
-      // Determine the new best equipped armor from all available armors in the game state
       let bestOwnedArmor: Armor | null = null;
       if (newPlayerStats.purchasedArmorIds.length > 0) {
-         // Filter from prev.availableArmor which should contain all master armor items
         const ownedArmors = prev.availableArmor.filter(a => newPlayerStats.purchasedArmorIds.includes(a.id));
         if (ownedArmors.length > 0) {
           bestOwnedArmor = ownedArmors.reduce((best, current) =>
@@ -275,7 +273,7 @@ export function useGameLogic() {
       }
       newPlayerStats.equippedArmor = bestOwnedArmor;
 
-      const msg = `Purchased ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection is now ${newPlayerStats.equippedArmor?.protectionBonus || 0}.`;
+      const msg = `Purchased ${armorToBuy.name} for $${armorToBuy.price.toLocaleString()}. Protection is now ${newPlayerStats.equippedArmor?.protectionBonus || PLAYER_BASE_DEFENSE}.`;
       toast({ title: "Armor Acquired!", description: msg });
       addLogEntry('shop_armor_purchase', msg);
 
@@ -375,7 +373,7 @@ export function useGameLogic() {
       if (prev.isBattleActive) return prev; 
 
       const enemy = generateEnemyStats(opponentType, prev.playerStats);
-      addLogEntry('info', `Battle started against ${enemy.name}!`);
+      addLogEntry('info', `Battle started against ${enemy.name}!`, true);
       return {
         ...prev,
         isBattleActive: true,
@@ -386,7 +384,7 @@ export function useGameLogic() {
     });
   }, [addLogEntry]);
 
-  const handlePlayerBattleAction = useCallback((action: 'attack') => {
+  const handlePlayerBattleAction = useCallback((action: 'attack' | 'flee') => {
     setGameState(prev => {
       if (!prev.isBattleActive || !prev.currentEnemy || prev.battleMessage) return prev;
 
@@ -395,37 +393,95 @@ export function useGameLogic() {
       let newBattleLog = [...prev.battleLog];
       let battleEnded = false;
       let playerWon: boolean | null = null;
+      let finalBattleMessage = "";
+
+      const addBattleLog = (msg: string) => {
+        newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: msg});
+      };
 
       if (action === 'attack') {
-        const playerAttackPower = PLAYER_BASE_ATTACK + (newPlayerStats.equippedWeapon?.damageBonus || 0);
-        
-        const playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
-        newEnemyStats.health = Math.max(0, newEnemyStats.health - playerDamage);
-        newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `You hit ${newEnemyStats.name} for ${playerDamage} damage.`});
-        if (newEnemyStats.health <= 0) { playerWon = true; battleEnded = true; }
+        if (Math.random() < MISS_CHANCE) {
+          addBattleLog(`You try to attack ${newEnemyStats.name}, but miss!`);
+        } else {
+          const playerAttackPower = PLAYER_BASE_ATTACK + (newPlayerStats.equippedWeapon?.damageBonus || 0);
+          let playerDamage = Math.max(1, playerAttackPower - newEnemyStats.defense);
+          const isCrit = Math.random() < CRITICAL_HIT_CHANCE;
+          if (isCrit) {
+            playerDamage = Math.round(playerDamage * CRITICAL_HIT_MULTIPLIER);
+            addBattleLog(`CRITICAL HIT! You strike ${newEnemyStats.name} for ${playerDamage} damage!`);
+          } else {
+            addBattleLog(`You hit ${newEnemyStats.name} for ${playerDamage} damage.`);
+          }
+          newEnemyStats.health = Math.max(0, newEnemyStats.health - playerDamage);
+          if (newEnemyStats.health <= 0) { playerWon = true; battleEnded = true; }
+        }
+      } else if (action === 'flee') {
+        // Flee chance could be modified by enemy type or player agility in the future
+        const actualFleeChance = FLEE_CHANCE_BASE - (newEnemyStats.attack / 100) + ( (PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0)) / 100) ; // Example: stronger enemies harder to flee
+        if (Math.random() < actualFleeChance) {
+          addBattleLog("You successfully escaped!");
+          finalBattleMessage = "You managed to escape!";
+          battleEnded = true;
+          // No win/loss consequences for successful flee directly, battle just ends.
+        } else {
+          addBattleLog("You failed to escape!");
+          // Enemy gets a free attack if flee fails
+          if (Math.random() < MISS_CHANCE) {
+            addBattleLog(`${newEnemyStats.name} tries to attack you, but misses!`);
+          } else {
+            const enemyAttackPower = newEnemyStats.attack;
+            const playerDefensePower = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0);
+            let enemyDamage = Math.max(1, enemyAttackPower - playerDefensePower);
+            const isEnemyCrit = Math.random() < CRITICAL_HIT_CHANCE;
+            if (isEnemyCrit) {
+              enemyDamage = Math.round(enemyDamage * CRITICAL_HIT_MULTIPLIER);
+              addBattleLog(`CRITICAL HIT! ${newEnemyStats.name} strikes you for ${enemyDamage} damage!`);
+            } else {
+              addBattleLog(`${newEnemyStats.name} hits you for ${enemyDamage} damage.`);
+            }
+            newPlayerStats.health = Math.max(0, newPlayerStats.health - enemyDamage);
+            if (newPlayerStats.health <= 0) { playerWon = false; battleEnded = true; }
+          }
+        }
       }
       
-      if (!battleEnded) {
-        const enemyAttackPower = newEnemyStats.attack;
-        const playerDefensePower = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0);
-        const enemyDamage = Math.max(1, enemyAttackPower - playerDefensePower);
-        newPlayerStats.health = Math.max(0, newPlayerStats.health - enemyDamage);
-        newBattleLog.push({id: uuidv4(), timestamp: new Date().toISOString(), type: 'battle_action', message: `${newEnemyStats.name} hits you for ${enemyDamage} damage.`});
-        if (newPlayerStats.health <= 0) { playerWon = false; battleEnded = true; }
+      // Enemy's turn if battle didn't end on player's action and player didn't successfully flee
+      if (!battleEnded && action === 'attack') { // Only if player attacked and didn't win
+        if (Math.random() < MISS_CHANCE) {
+          addBattleLog(`${newEnemyStats.name} tries to attack you, but misses!`);
+        } else {
+          const enemyAttackPower = newEnemyStats.attack;
+          const playerDefensePower = PLAYER_BASE_DEFENSE + (newPlayerStats.equippedArmor?.protectionBonus || 0);
+          let enemyDamage = Math.max(1, enemyAttackPower - playerDefensePower);
+          const isEnemyCrit = Math.random() < CRITICAL_HIT_CHANCE;
+          if (isEnemyCrit) {
+            enemyDamage = Math.round(enemyDamage * CRITICAL_HIT_MULTIPLIER);
+            addBattleLog(`CRITICAL HIT! ${newEnemyStats.name} strikes you for ${enemyDamage} damage!`);
+          } else {
+            addBattleLog(`${newEnemyStats.name} hits you for ${enemyDamage} damage.`);
+          }
+          newPlayerStats.health = Math.max(0, newPlayerStats.health - enemyDamage);
+          if (newPlayerStats.health <= 0) { playerWon = false; battleEnded = true; }
+        }
       }
       
       if (battleEnded) {
-        const battleResult = getBattleResultConsequences(playerWon!, newEnemyStats, newPlayerStats);
-        newPlayerStats.cash = Math.max(0, newPlayerStats.cash + battleResult.cashChange);
-        newPlayerStats.reputation += battleResult.reputationChange;
-        
-        const generalLogType = playerWon ? 'combat_win' : 'combat_loss';
-        addLogEntry(generalLogType, battleResult.narration);
-        
-        let finalBattleMessage = playerWon ? `You defeated ${newEnemyStats.name}!` : "You have been defeated!";
-        let finalIsGameOver = prev.isGameOver;
+        if (finalBattleMessage) { // Flee success message
+          // General log for flee is handled by the battle log itself.
+        } else if (playerWon !== null) { // Decided by combat damage
+          const battleResult = getBattleResultConsequences(playerWon, newEnemyStats, newPlayerStats);
+          newPlayerStats.cash = Math.max(0, newPlayerStats.cash + battleResult.cashChange);
+          newPlayerStats.reputation += battleResult.reputationChange;
+          
+          const generalLogType = playerWon ? 'combat_win' : 'combat_loss';
+          addLogEntry(generalLogType, battleResult.narration); // Main game log
+          addBattleLog(battleResult.narration); // Battle screen log
+          
+          finalBattleMessage = playerWon ? `You defeated ${newEnemyStats.name}!` : "You have been defeated!";
+        }
 
-        if (!playerWon && newPlayerStats.health <= 0) { 
+        let finalIsGameOver = prev.isGameOver;
+        if (!playerWon && newPlayerStats.health <= 0 && action !== 'flee') { // Player lost by damage
           finalIsGameOver = true; 
         }
         
@@ -433,7 +489,7 @@ export function useGameLogic() {
           ...prev, 
           playerStats: newPlayerStats, 
           currentEnemy: newEnemyStats, 
-          battleLog: newBattleLog, 
+          battleLog: newBattleLog.slice(-20), 
           battleMessage: finalBattleMessage, 
           isGameOver: finalIsGameOver,
           isBattleActive: true, 
@@ -445,7 +501,7 @@ export function useGameLogic() {
   
   const endBattleScreen = useCallback(() => {
     setGameState(prev => {
-      const wasGameOverFromBattle = prev.playerStats.health <= 0 && prev.isBattleActive;
+      const wasGameOverFromBattle = prev.playerStats.health <= 0 && prev.isBattleActive && prev.battleMessage !== "You managed to escape!";
       return { 
         ...prev, 
         isBattleActive: false, 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Shield, Sword, Heart, User, Skull, Zap, Loader2 } from 'lucide-react';
+import { Shield, Sword, Heart, User, Skull, Zap, Loader2, Footprints } from 'lucide-react'; // Changed Run to Footprints
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
 
@@ -15,9 +15,9 @@ interface BattleScreenProps {
   enemyStats: EnemyStats;
   battleLog: LogEntry[];
   battleMessage: string | null;
-  onPlayerAction: (action: 'attack' /* | 'item' | 'flee' */) => void;
-  onEndBattle: () => void; // To return to main game UI after victory/defeat message
-  isLoading: boolean; // To disable actions during processing
+  onPlayerAction: (action: 'attack' | 'flee') => void;
+  onEndBattle: () => void; 
+  isLoading: boolean; 
 }
 
 const StatDisplay: React.FC<{ icon: React.ElementType; label: string; value: string | number; iconColor?: string }> = ({ icon: Icon, label, value, iconColor }) => (
@@ -44,6 +44,7 @@ export function BattleScreen({
 
   const playerEffectiveAttack = PLAYER_BASE_ATTACK + (playerStats.equippedWeapon?.damageBonus || 0);
   const playerEffectiveDefense = PLAYER_BASE_DEFENSE + (playerStats.equippedArmor?.protectionBonus || 0);
+  const isBattleOver = !!battleMessage;
 
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-50 overflow-y-auto">
@@ -54,9 +55,7 @@ export function BattleScreen({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 space-y-4">
-          {/* Player and Enemy Stats Side-by-Side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            {/* Player Card */}
             <Card className="bg-card/80 border-primary/50">
               <CardHeader className="pb-2 pt-3">
                 <CardTitle className="text-xl flex items-center"><User className="mr-2 h-5 w-5 text-primary" />{playerStats.name}</CardTitle>
@@ -78,7 +77,6 @@ export function BattleScreen({
               </CardContent>
             </Card>
 
-            {/* Enemy Card */}
             <Card className="bg-card/80 border-destructive/50">
               <CardHeader className="pb-2 pt-3">
                 <CardTitle className="text-xl flex items-center"><Skull className="mr-2 h-5 w-5 text-destructive" />{enemyStats.name}</CardTitle>
@@ -101,7 +99,6 @@ export function BattleScreen({
             </Card>
           </div>
 
-          {/* Battle Log */}
           <Card className="bg-muted/30">
             <CardHeader className="p-2">
               <CardTitle className="text-sm font-medium">Battle Log</CardTitle>
@@ -119,13 +116,12 @@ export function BattleScreen({
             </CardContent>
           </Card>
 
-          {/* Actions / Battle Message */}
-          {battleMessage ? (
+          {isBattleOver ? (
             <div className="text-center space-y-3 py-2">
-              <p className={`text-xl font-bold ${playerStats.health > 0 && enemyStats.health <= 0 ? 'text-accent' : 'text-destructive'}`}>
+              <p className={`text-xl font-bold ${battleMessage === "You managed to escape!" || (playerStats.health > 0 && enemyStats.health <= 0) ? 'text-accent' : 'text-destructive'}`}>
                 {battleMessage}
               </p>
-              <Button onClick={onEndBattle} className="w-1/2" variant={playerStats.health > 0 && enemyStats.health <= 0  ? "default" : "destructive"}>
+              <Button onClick={onEndBattle} className="w-1/2" variant={battleMessage === "You managed to escape!" || (playerStats.health > 0 && enemyStats.health <= 0) ? "default" : "destructive"}>
                 Continue
               </Button>
             </div>
@@ -134,14 +130,17 @@ export function BattleScreen({
               <Button 
                 onClick={() => onPlayerAction('attack')} 
                 disabled={isLoading}
-                className="w-1/3 py-3 text-base bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                className="w-2/5 py-3 text-base bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Sword className="mr-2 h-5 w-5" /> Attack</>}
               </Button>
-              {/* 
-              <Button onClick={() => onPlayerAction('item')} disabled={isLoading || true} className="w-1/4 py-3 text-base">Use Item</Button>
-              <Button onClick={() => onPlayerAction('flee')} disabled={isLoading || true} className="w-1/4 py-3 text-base">Flee</Button> 
-              */}
+              <Button 
+                onClick={() => onPlayerAction('flee')} 
+                disabled={isLoading}
+                className="w-2/5 py-3 text-base bg-blue-600 hover:bg-blue-600/90 text-white"
+              >
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Footprints className="mr-2 h-5 w-5" /> Flee</>}
+              </Button>
             </div>
           )}
         </CardContent>

@@ -1,4 +1,3 @@
-
 import type { DrugPrice, LocalHeadline } from '@/services/market';
 import type { GameEvent } from '@/types/events';
 
@@ -87,15 +86,15 @@ export type LogEventType =
   | 'shop_weapon_purchase'
   | 'shop_armor_purchase'
   | 'shop_healing_purchase'
-  | 'shop_capacity_upgrade' // New log type for capacity upgrades
-  | 'event_trigger' // For borough-wide events affecting the environment
-  | 'event_player_impact' // For events directly impacting the player
-  | 'battle_action' // For individual actions within a battle
-  | 'info'; // General information
+  | 'shop_capacity_upgrade' 
+  | 'event_trigger' 
+  | 'event_player_impact' 
+  | 'battle_action' 
+  | 'info'; 
 
 export interface LogEntry {
-  id: string; // Unique ID for key prop
-  timestamp: string; // ISO string for simplicity, can be formatted
+  id: string; 
+  timestamp: string; 
   type: LogEventType;
   message: string;
 }
@@ -120,6 +119,9 @@ export interface GameState {
   // Battle State
   isBattleActive: boolean;
   currentEnemy: EnemyStats | null;
-  battleLog: LogEntry[]; // Specific log for the current battle
-  battleMessage: string | null; // Message to display on battle screen (e.g., victory/defeat)
+  battleLog: LogEntry[]; 
+  battleMessage: string | null; 
 }
+
+// Defines the actions a player can take during a battle
+export type PlayerBattleActionType = 'attack' | 'flee'; // Added 'flee'
