@@ -50,10 +50,10 @@ export const ALL_DRUGS = [
   { name: 'Mushrooms', basePrice: 15, volatility: 0.16 },
   { name: 'LSD', basePrice: 25, volatility: 0.2 },
   { name: 'Meth', basePrice: 80, volatility: 0.28 }, // Was "Speed"
-  { name: 'Crack', basePrice: 60, volatility: 0.35 }, // Was "Hard", updated basePrice to 60 and volatility to 0.35
+  { name: 'Crack', basePrice: 60, volatility: 0.35 },
   { name: 'Heroin', basePrice: 120, volatility: 0.22 }, // Was "Boi"
   { name: 'OxyContin', basePrice: 60, volatility: 0.22 }, // Was "Blues"
-  { name: 'Dilaudid', basePrice: 180, volatility: 0.26 }, // New
+  { name: 'Dilaudid', basePrice: 200, volatility: 0.25 },
 ];
 
 const ALL_HEADLINES: Array<{
@@ -181,3 +181,4 @@ export async function getLocalHeadlines(location: string): Promise<LocalHeadline
 
   return headlines;
 }
+

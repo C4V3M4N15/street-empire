@@ -10,6 +10,15 @@ export interface DrugReference {
   category: string;
 }
 
+export interface BoroughReference {
+    name: string;
+    description: string;
+    typicalHeat?: string; // e.g., "Low", "Medium", "High"
+    commonEvents?: string; // e.g., "Police raids", "Music festivals"
+    priceProfile?: string; // e.g. "Expensive drugs popular", "Cheap drugs common"
+}
+
+
 // Updated categories based on the new drug list
 const drugCategoriesMap: Record<string, string> = {
   'Weed': 'Relaxant/Psychedelic (Soft)',
@@ -105,3 +114,4 @@ export async function getBoroughReferenceData(): Promise<BoroughReference[]> {
   await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
   return ALL_BOROUGH_REFERENCE_DATA;
 }
+
